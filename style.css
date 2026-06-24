@@ -791,3 +791,81 @@ svg defs { display: block; }
 .val-input[type=number] {
   -moz-appearance: textfield;
 }
+
+/* ── RIR (Reps in Reserve) Selector ── */
+.section-title .rir-hint {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--text2);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+
+.rir-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rir-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: var(--font);
+  position: relative;
+  overflow: hidden;
+}
+
+.rir-btn:active {
+  transform: scale(0.94);
+}
+
+.rir-btn.active {
+  border-color: var(--accent);
+  background: rgba(124, 92, 255, 0.18);
+  color: var(--text);
+  box-shadow: 0 0 14px rgba(124, 92, 255, 0.3);
+}
+
+/* Per-button active color themes */
+#rir-0.active { border-color: #ff4d6d; background: rgba(255,77,109,0.18); box-shadow: 0 0 14px rgba(255,77,109,0.3); }
+#rir-1.active { border-color: #ff9c33; background: rgba(255,156,51,0.18); box-shadow: 0 0 14px rgba(255,156,51,0.3); }
+#rir-2.active { border-color: #ffd700; background: rgba(255,215,0,0.18);  box-shadow: 0 0 14px rgba(255,215,0,0.3); }
+#rir-3.active { border-color: #00e096; background: rgba(0,224,150,0.18);  box-shadow: 0 0 14px rgba(0,224,150,0.3); }
+
+.rir-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.rir-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.rir-sub {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--accent);
+  background: rgba(124,92,255,0.15);
+  padding: 1px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+}
+
+.rir-btn.active .rir-sub {
+  background: rgba(255,255,255,0.15);
+  color: var(--text);
+}

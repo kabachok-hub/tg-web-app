@@ -10,7 +10,43 @@ let workout = { exercise: '', date: '', sets: [], rpe: 'Легко', weight: 80,
 
 // ── Helpers ──
 const $ = id => document.getElementById(id);
-const epley = (w, r) => r === 1 ? w : Math.round(w * (1 + r / 30) * 10) / 10;
+function parseReps(str) {
+  str = String(str || '').replace(',', '.').trim();
+  let reps = 0;
+  let rir = null;
+  if (str.includes('+')) {
+    const parts = str.split('+');
+    reps = parseFloat(parts[0]) || 0;
+    rir = parseFloat(parts[1]) || null;
+  } else {
+    reps = parseFloat(str) || 0;
+  }
+  return { reps, rir };
+}
+function formatRepsClean(s) {
+  let reps = 0;
+  let rir = null;
+  if (typeof s === 'object' && s !== null) {
+    reps = parseFloat(s.reps) || 0;
+    rir = s.rir !== undefined && s.rir !== null ? parseFloat(s.rir) : null;
+  } else {
+    const parsed = parseReps(s);
+    reps = parsed.reps;
+    rir = parsed.rir;
+  }
+  let repsStr = reps % 1 === 0 ? String(reps) : String(reps);
+  if (rir !== null) {
+    let rirStr = rir % 1 === 0 ? String(rir) : String(rir);
+    return `${repsStr} (+${rirStr} в зап.)`;
+  }
+  return repsStr;
+}
+const epley = (w, r) => {
+  const parsed = parseReps(r);
+  const reps = parsed.reps;
+  if (reps <= 0) return 0;
+  return reps === 1 ? w : Math.round(w * (1 + reps / 30) * 10) / 10;
+};
 const parseDate = s => { if (!s) return null; const [d, m, y] = s.split('.'); return new Date(+y, +m - 1, +d); };
 const fmtDate = d => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 
@@ -210,13 +246,13 @@ function renderPRList() {
   const records = {};
   ws.filter(w => w.weight > 0).forEach(w => {
     const e = epley(w.weight, w.reps);
-    if (!records[w.exercise] || e > records[w.exercise].e1rm) records[w.exercise] = { e1rm: e, weight: w.weight, reps: w.reps };
+    if (!records[w.exercise] || e > records[w.exercise].e1rm) records[w.exercise] = { e1rm: e, weight: w.weight, reps: w.reps, rir: w.rir };
   });
   const medals = ['🥇', '🥈', '🥉'];
   const list = $('pr-list');
   list.innerHTML = '';
   Object.entries(records).slice(0, 5).forEach(([ex, r], i) => {
-    list.innerHTML += `<div class="pr-item"><span class="pr-medal">${medals[i] || '🏅'}</span><div class="pr-info"><div class="pr-ex">${ex}</div><div class="pr-val">${r.weight}кг × ${r.reps} повт</div></div><span class="pr-num">${r.e1rm} кг</span></div>`;
+    list.innerHTML += `<div class="pr-item"><span class="pr-medal">${medals[i] || '🏅'}</span><div class="pr-info"><div class="pr-ex">${ex}</div><div class="pr-val">${r.weight}кг × ${formatRepsClean(r)}</div></div><span class="pr-num">${r.e1rm} кг</span></div>`;
   });
   if (!list.innerHTML) list.innerHTML = '<p class="empty-state">Нет рекордов</p>';
 }
@@ -330,20 +366,26 @@ function toggleNoWeight() {
 }
 
 function adjustReps(delta) {
-  workout.reps = Math.max(1, Math.min(50, workout.reps + delta));
+  const parsed = parseReps(workout.reps);
+  let newReps = Math.max(0.5, Math.min(50, parsed.reps + delta));
+  if (newReps % 1 === 0) newReps = parseInt(newReps);
+  if (parsed.rir !== null) {
+    workout.reps = `${newReps}+${parsed.rir}`;
+  } else {
+    workout.reps = String(newReps);
+  }
   $('reps-input').value = workout.reps;
   updateE1RM();
 }
 
 function setReps(v) {
-  workout.reps = v;
+  workout.reps = String(v);
   $('reps-input').value = v;
   updateE1RM();
 }
 
 function updateRepsFromInput(v) {
-  const num = parseInt(v);
-  workout.reps = isNaN(num) ? 1 : num;
+  workout.reps = v;
   updateE1RM();
 }
 
@@ -353,8 +395,22 @@ function selectRPE(v, el) {
   workout.rpe = v;
 }
 
+let currentRIR = 0;
+function selectRIR(val, el) {
+  document.querySelectorAll('.rir-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentRIR = parseInt(val);
+}
+function resetRIR() {
+  currentRIR = 0;
+  document.querySelectorAll('.rir-btn').forEach(b => b.classList.remove('active'));
+  const btn0 = $('rir-0');
+  if (btn0) btn0.classList.add('active');
+}
+
 function updateE1RM() {
-  const e = workout.weight > 0 && workout.reps > 0 ? epley(workout.weight, workout.reps) : null;
+  const parsed = parseReps(workout.reps);
+  const e = workout.weight > 0 && parsed.reps > 0 ? epley(workout.weight, workout.reps) : null;
   $('e1rm-val').textContent = e ? e + ' кг' : '—';
 }
 
@@ -393,20 +449,43 @@ function addSet() {
     else if (activeRpeBtn.classList.contains('red')) currentRpe = 'Тяжело';
   }
   workout.rpe = currentRpe;
-  // rpe saved both as rpe (web app) and diff (bot field) for cross-compatibility
-  const set = { exercise: workout.exercise, date: workout.date, weight: workout.weight, reps: workout.reps, rpe: currentRpe, diff: currentRpe, set_num: workout.sets.length + 1 };
+  
+  // Считываем повторения прямо из поля ввода
+  const repsVal = $('reps-input').value;
+  const parsed = parseReps(repsVal);
+  const set = { 
+    exercise: workout.exercise, 
+    date: workout.date, 
+    weight: workout.weight, 
+    reps: parsed.reps, 
+    rpe: currentRpe, 
+    diff: currentRpe, 
+    set_num: workout.sets.length + 1 
+  };
+  
+  // Если в текстовом вводе не указан '+', берем из RIR кнопок
+  if (parsed.rir !== null) {
+    set.rir = parsed.rir;
+  } else if (currentRIR > 0) {
+    set.rir = currentRIR;
+  }
+  
   workout.sets.push(set);
   renderSetsLog();
   $('save-btn').style.display = 'block';
   showToast(`✅ Подход ${workout.sets.length} добавлен`);
+  
+  // Сбрасываем RIR на дефолтный (Отказ)
+  resetRIR();
 }
 
 function renderSetsLog() {
   const log = $('sets-log');
   if (!workout.sets.length) { log.innerHTML = '<p class="empty-state">Ещё нет подходов</p>'; return; }
   log.innerHTML = workout.sets.map((s, i) => {
+    const repsClean = formatRepsClean(s);
     const e = s.weight > 0 ? `1ПМ≈${epley(s.weight, s.reps)}кг` : 'без веса';
-    const wt = s.weight > 0 ? `${s.weight}кг × ${s.reps}` : `(без веса) × ${s.reps}`;
+    const wt = s.weight > 0 ? `${s.weight}кг × ${repsClean}` : `(без веса) × ${repsClean}`;
     return `<div class="set-item"><span class="set-num">${i + 1}-й подход</span><span class="set-data">${wt}</span><span class="set-1rm">${e}</span><button class="set-del" onclick="delSet(${i})">🗑</button></div>`;
   }).join('');
 }
@@ -436,6 +515,7 @@ async function saveWorkout() {
   if (greenBtn) greenBtn.classList.add('active');
   // Дата НЕ сбрасывается — чипы и input остаются как есть
   renderSetsLog();
+  resetRIR();
   $('save-btn').style.display = 'none';
   $('selected-exercise-display').style.display = 'none';
   document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => c.classList.remove('active'));
@@ -506,7 +586,8 @@ function renderDiary(days) {
       if (maxE1rm > 0) metaStr += (metaStr ? ' · ' : '') + `⚡ 1ПМ≈${maxE1rm}кг`;
 
       const badges = sets.map((s, idx) => {
-        const wt = s.weight > 0 ? `${s.weight}кг×${s.reps}` : `BW×${s.reps}`;
+        const repsClean = formatRepsClean(s);
+        const wt = s.weight > 0 ? `${s.weight}кг×${repsClean}` : `BW×${repsClean}`;
         return `<div class="diary-set-pill">
           <span class="diary-set-pill-num">${idx + 1}</span>
           <span>${wt}</span>

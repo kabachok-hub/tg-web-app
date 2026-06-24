@@ -177,7 +177,7 @@
   <div class="weight-display glass">
     <button class="adj-btn" onclick="adjustReps(-1)">−1</button>
     <div class="val-center">
-      <input type="number" id="reps-input" value="8" step="1" min="1" max="99" class="val-input" oninput="updateRepsFromInput(this.value)"/>
+      <input type="text" id="reps-input" value="8" class="val-input" oninput="updateRepsFromInput(this.value)"/>
       <small>повт.</small>
     </div>
     <button class="adj-btn" onclick="adjustReps(+1)">+1</button>
@@ -198,6 +198,33 @@
     <button class="rpe-btn green active" onclick="selectRPE('Легко', this)">🟢 Легко</button>
     <button class="rpe-btn yellow" onclick="selectRPE('Средне', this)">🟡 Средне</button>
     <button class="rpe-btn red" onclick="selectRPE('Тяжело', this)">🔴 Тяжело</button>
+  </div>
+
+  <!-- RIR (Reps in Reserve) -->
+  <div class="section-title">🔋 Запас повторений (RIR)
+    <span class="rir-hint">сколько мог ещё сделать</span>
+  </div>
+  <div class="rir-buttons" id="rir-buttons">
+    <button class="rir-btn active" id="rir-0" onclick="selectRIR(0, this)">
+      <span class="rir-icon">💀</span>
+      <span class="rir-label">Отказ</span>
+      <span class="rir-sub">+0</span>
+    </button>
+    <button class="rir-btn" id="rir-1" onclick="selectRIR(1, this)">
+      <span class="rir-icon">🔥</span>
+      <span class="rir-label">1 осталось</span>
+      <span class="rir-sub">+1</span>
+    </button>
+    <button class="rir-btn" id="rir-2" onclick="selectRIR(2, this)">
+      <span class="rir-icon">💪</span>
+      <span class="rir-label">2 осталось</span>
+      <span class="rir-sub">+2</span>
+    </button>
+    <button class="rir-btn" id="rir-3" onclick="selectRIR(3, this)">
+      <span class="rir-icon">😎</span>
+      <span class="rir-label">3+ осталось</span>
+      <span class="rir-sub">+3</span>
+    </button>
   </div>
 
   <!-- 1RM Preview -->
