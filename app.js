@@ -1703,17 +1703,21 @@ function hasValidProgram(p) {
 let wizardState = {
   goal: 'hypertrophy',
   level: 'intermediate',
-  days: 4,
+  days: 3,
   equipment: 'gym',
   split: 'auto'
 };
+let isWizardOpen = false;
 let selectedProgramDay = 0;
 
 function openProgramWizard() {
-  const container = $('program-container');
-  if (container) container.innerHTML = renderProgramWizardHTML();
-  const rebBtn = $('prog-rebuild-btn');
-  if (rebBtn) rebBtn.style.display = 'none';
+  isWizardOpen = true;
+  renderProgramTab();
+}
+
+function closeProgramWizard() {
+  isWizardOpen = false;
+  renderProgramTab();
 }
 
 function selectWizardOption(field, value, el) {
@@ -1806,10 +1810,15 @@ function renderProgramWizardHTML() {
 
   return `
     <div class="wizard-card glass">
-      <div style="margin-bottom:14px;">
-        <span class="badge" style="background:rgba(124,92,255,0.25); color:#c4b5fd; border:1px solid rgba(124,92,255,0.4); padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:700;">🧬 PubMed AI Generator</span>
-        <h2 style="font-size:1.15rem; font-weight:900; margin-top:6px;">Мастер составления тренировок</h2>
-        <p style="font-size:0.78rem; color:var(--text2); margin-top:2px;">Адаптивный подбор сплита, объема (MAV) и волновой периодизации под твою силу</p>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+        <div>
+          <span class="badge" style="background:rgba(124,92,255,0.25); color:#c4b5fd; border:1px solid rgba(124,92,255,0.4); padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:700;">🧬 PubMed AI Generator</span>
+          <h2 style="font-size:1.15rem; font-weight:900; margin-top:6px;">Мастер составления тренировок</h2>
+          <p style="font-size:0.78rem; color:var(--text2); margin-top:2px;">Адаптивный подбор сплита, объема (MAV) и волновой периодизации под твою силу</p>
+        </div>
+        ${hasValidProgram(DB.program) ? `
+          <button class="clear-btn" style="font-size:1.2rem; padding:2px 8px; color:var(--text2);" onclick="closeProgramWizard()" title="Назад к программе">✕</button>
+        ` : ''}
       </div>
 
       <div class="wizard-step-title">🎯 1. Главная цель тренировок</div>
@@ -1924,6 +1933,7 @@ function generateProgramFromWizard() {
   });
 
   DB.program = program;
+  isWizardOpen = false;
   saveData();
   showToast('🎉 Научная программа успешно создана!');
   renderProgramTab();
@@ -2188,7 +2198,7 @@ function renderProgramTab() {
   const rebBtn = $('prog-rebuild-btn');
   if (!container) return;
 
-  if (!hasValidProgram(DB.program)) {
+  if (!hasValidProgram(DB.program) || isWizardOpen) {
     if (rebBtn) rebBtn.style.display = 'none';
     container.innerHTML = renderProgramWizardHTML();
   } else {
