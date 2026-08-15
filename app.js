@@ -2293,50 +2293,83 @@ function renderActiveProgramHTML() {
       <div class="plan-exercises-list">
         ${(day.exercises || []).map((ex, idx) => {
           const hasWarmup = ex.warmup_ladder && ex.warmup_ladder.length > 0;
+          const workingSetsArr = Array.from({ length: ex.sets || 3 }, (_, i) => i + 1);
+
           return `
             <div class="plan-ex-card">
               <div class="plan-ex-header">
                 <span class="plan-ex-name">${idx + 1}. ${ex.name}</span>
                 <span class="plan-ex-muscle">${ex.muscle_group}</span>
               </div>
-              <div class="plan-ex-meta">
-                <div class="plan-meta-item">🎯 <strong>${ex.sets}</strong> подх × <strong>${ex.reps}</strong></div>
+
+              <!-- Top summary badges -->
+              <div class="plan-ex-meta" style="margin: 6px 0 8px;">
+                <div class="plan-meta-item">🎯 <strong>${ex.sets}</strong> раб. подх × <strong>${ex.reps}</strong></div>
                 <div class="plan-meta-item">⚡ RPE <strong>${ex.target_rpe}</strong> (RIR ${ex.target_rir})</div>
                 ${ex.working_weight > 0 ? `<div class="plan-meta-item">⚖️ <strong>${ex.working_weight} кг</strong></div>` : ''}
+                <div class="plan-meta-item">⏳ Отдых <strong>${Math.round((ex.rest_sec||120)/60)} мин</strong></div>
               </div>
 
-              <div style="display:flex; gap:6px; margin: 8px 0 4px; align-items:center;">
-                <button class="chip" style="background:rgba(0,229,200,0.15); border:1px solid rgba(0,229,200,0.35); color:#5eead4; font-size:0.72rem; font-weight:700; padding:4px 10px;" onclick="prefillAndGoToWorkout('${ex.name.replace(/'/g, "\\'")}', ${ex.working_weight || 0}, '${ex.reps}')">
-                  ▶️ В Запись
-                </button>
-                <button class="timer-mini-btn" onclick="startRestTimer(${ex.rest_sec || 120}, '${ex.name.replace(/'/g, "\\'")}')">
-                  ⏳ Отдых ${Math.round((ex.rest_sec||120)/60)}м
-                </button>
-              </div>
-              
               ${hasWarmup ? `
-                <div class="warmup-accordion">
-                  <div class="warmup-summary" onclick="toggleWarmup('warmup-${selectedProgramDay}-${idx}')">
-                    <span>🧮 Разминочная пирамида (${ex.warmup_ladder.length} шага) ▾</span>
+                <!-- 🟡 WARMUP SETS BLOCK -->
+                <div class="set-plan-block" style="border-left: 3px solid #facc15;">
+                  <div class="set-plan-title warmup">
+                    <span>🟡 РАЗМИНКА (${ex.warmup_ladder.length} шага)</span>
+                    <small style="text-transform:none; font-weight:600; color:var(--text2);">Прогрев без усталости</small>
                   </div>
-                  <div class="warmup-ladder-list" id="warmup-${selectedProgramDay}-${idx}" style="display:none;">
-                    ${ex.warmup_ladder.map(w => `
-                      <div class="warmup-step-row">
-                        <span>Шаг ${w.step}: <strong>${w.weight} кг</strong> × ${w.reps} повт.</span>
-                        <small style="color:var(--text2);">${w.note}</small>
+                  ${ex.warmup_ladder.map(w => `
+                    <div class="set-plan-row warmup-row">
+                      <span class="set-badge-pill warmup">Р${w.step}</span>
+                      <div class="set-main-info">
+                        <span class="set-weight-reps">${w.weight} кг × ${w.reps} повт</span>
+                        <span class="set-sub-note">${w.note}</span>
                       </div>
-                    `).join('')}
-                  </div>
+                      <div class="set-actions">
+                        <button class="chip" style="padding:2px 8px; font-size:0.68rem; font-weight:700; background:rgba(250,204,21,0.15); border:1px solid rgba(250,204,21,0.35); color:#fde047;" onclick="prefillAndGoToWorkout('${ex.name.replace(/'/g, "\\'")}', ${w.weight}, '${w.reps}')">
+                          ▶️ Ввод
+                        </button>
+                      </div>
+                    </div>
+                  `).join('')}
                 </div>
-              ` : ''}
+              ` : `
+                <div style="font-size:0.7rem; color:var(--text2); margin: 4px 0 6px; padding: 4px 8px; background:rgba(255,255,255,0.03); border-radius:6px;">
+                  💡 <em>Разминка не нужна: мышцы уже разогреты базовыми движениями</em>
+                </div>
+              `}
 
-              ${ex.pubmed_tip ? `<div class="plan-ex-tip">💡 <em>${ex.pubmed_tip}</em></div>` : ''}
+              <!-- 🔥 WORKING SETS BLOCK -->
+              <div class="set-plan-block" style="border-left: 3px solid var(--accent); margin-top:8px;">
+                <div class="set-plan-title workset">
+                  <span>🔥 РАБОЧИЕ ПОДХОДЫ (${ex.sets} сета)</span>
+                  <small style="text-transform:none; font-weight:700; color:#5eead4;">Стимул роста (MAV)</small>
+                </div>
+                ${workingSetsArr.map(sNum => `
+                  <div class="set-plan-row workset-row">
+                    <span class="set-badge-pill workset">Сет ${sNum}</span>
+                    <div class="set-main-info">
+                      <span class="set-weight-reps">${ex.working_weight > 0 ? `${ex.working_weight} кг` : 'Свой вес'} × ${ex.reps} повт</span>
+                      <span class="set-sub-note">Цель: RPE ${ex.target_rpe} (запас ${ex.target_rir} повт)</span>
+                    </div>
+                    <div class="set-actions">
+                      <button class="chip" style="padding:3px 8px; font-size:0.7rem; font-weight:700; background:rgba(0,229,200,0.15); border:1px solid rgba(0,229,200,0.35); color:#5eead4;" onclick="prefillAndGoToWorkout('${ex.name.replace(/'/g, "\\'")}', ${ex.working_weight || 0}, '${ex.reps}')">
+                        ▶️ Записать
+                      </button>
+                      <button class="timer-mini-btn" style="padding:3px 6px;" onclick="startRestTimer(${ex.rest_sec || 120}, '${ex.name.replace(/'/g, "\\'")}')">
+                        ⏳ ${Math.round((ex.rest_sec||120)/60)}м
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+
+              ${ex.pubmed_tip ? `<div class="plan-ex-tip" style="margin-top:8px;">💡 <em>${ex.pubmed_tip}</em></div>` : ''}
             </div>
           `;
         }).join('')}
       </div>
 
-      <button class="btn-primary" onclick="launchWorkoutFromProgram(${selectedProgramDay})" style="width:100%; margin-top:10px;">
+      <button class="btn-primary" onclick="launchWorkoutFromProgram(${selectedProgramDay})" style="width:100%; margin-top:12px; padding:14px; font-size:0.92rem; font-weight:800;">
         ▶️ Запустить эту тренировку в Запись
       </button>
     </div>

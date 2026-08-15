@@ -1096,24 +1096,72 @@ svg defs { display: block; }
   align-items: center;
   gap: 4px;
 }
-.warmup-ladder-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 6px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  padding: 6px 8px;
+
+/* ── Detailed Sets Breakdown (Warmup vs Worksets) ── */
+.set-plan-block {
+  margin-top: 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 10px;
 }
-.warmup-step-row {
+.set-plan-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-bottom: 6px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.set-plan-title.warmup { color: #facc15; }
+.set-plan-title.workset { color: #c4b5fd; }
+.set-plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  margin-bottom: 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.76rem;
+  transition: all 0.15s ease;
+}
+.set-plan-row:last-child { margin-bottom: 0; }
+.set-plan-row.warmup-row { border-left: 3px solid #facc15; }
+.set-plan-row.workset-row { border-left: 3px solid var(--accent); background: rgba(124, 92, 255, 0.08); }
+
+.set-badge-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.set-badge-pill.warmup { background: rgba(250, 204, 21, 0.2); color: #fde047; border: 1px solid rgba(250, 204, 21, 0.35); }
+.set-badge-pill.workset { background: rgba(124, 92, 255, 0.25); color: #c4b5fd; border: 1px solid rgba(124, 92, 255, 0.4); }
+
+.set-main-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin: 0 8px;
+}
+.set-weight-reps {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.set-sub-note {
+  font-size: 0.65rem;
   color: var(--text2);
 }
-.warmup-step-row strong {
-  color: var(--green);
+.set-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
 /* Floating Rest Timer HUD */
