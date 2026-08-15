@@ -17,6 +17,10 @@
     <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
     <span>Главная</span>
   </button>
+  <button class="nav-btn" data-tab="program" onclick="switchTab('program')">
+    <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+    <span>Программа</span>
+  </button>
   <button class="nav-btn" data-tab="workout" onclick="switchTab('workout')">
     <svg viewBox="0 0 24 24"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29l-1.43-1.43z"/></svg>
     <span>Запись</span>
@@ -65,6 +69,16 @@
       <p id="recovery-status">Загрузка данных...</p>
       <div class="recovery-pills" id="recovery-pills"></div>
     </div>
+  </div>
+
+  <!-- Program Quick Banner (on Dashboard) -->
+  <div class="program-quick-card glass" id="dash-program-banner" onclick="switchTab('program')">
+    <div class="program-quick-left">
+      <span class="badge" style="background: rgba(124,92,255,0.25); color: #bca6ff; border: 1px solid rgba(124,92,255,0.4);">🧬 Научная программа</span>
+      <h3 id="dash-prog-title" style="margin-top: 4px; font-size: 0.95rem;">Составить тренировочный сплит</h3>
+      <p id="dash-prog-sub" style="font-size: 0.76rem; color: var(--text2); margin-top: 2px;">Авторегуляция RPE, разминки и 6-недельная матрица</p>
+    </div>
+    <button class="icon-action-btn">→</button>
   </div>
 
   <!-- Health Tracker Card -->
@@ -123,6 +137,20 @@
   <!-- PR Records -->
   <div class="section-title">🏆 Личные рекорды</div>
   <div class="pr-list" id="pr-list"></div>
+</section>
+
+<!-- ═══════════════════════ PROGRAM TAB ═══════════════════════ -->
+<section id="tab-program" class="tab">
+  <header class="page-header">
+    <div class="header-left">
+      <h1>🧬 Научная программа</h1>
+      <p class="subtitle" id="prog-header-subtitle">Evidence-Based Training & Periodization</p>
+    </div>
+    <button class="chip" id="prog-rebuild-btn" onclick="openProgramWizard()" style="display:none">🔄 Сменить</button>
+  </header>
+
+  <!-- Container rendered by JS: either Wizard or Active Program View -->
+  <div id="program-container"></div>
 </section>
 
 <!-- ═══════════════════════ WORKOUT ═══════════════════════ -->
@@ -368,6 +396,38 @@
     </div>
   </div>
 </section>
+
+<!-- ═══════════════════════ REST TIMER FLOATING HUD ═══════════════════════ -->
+<div id="rest-timer-hud" class="rest-timer-hud glass" style="display:none">
+  <div class="timer-ring-wrap">
+    <svg class="timer-svg" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="26" class="timer-bg"/>
+      <circle cx="30" cy="30" r="26" class="timer-fill" id="timer-hud-circle"/>
+    </svg>
+    <div class="timer-val" id="timer-hud-text">01:30</div>
+  </div>
+  <div class="timer-info">
+    <strong id="timer-hud-ex">Отдых между сетами</strong>
+    <span id="timer-hud-status">Восстановление креатинфосфата (ATP)</span>
+  </div>
+  <div class="timer-actions">
+    <button class="timer-mini-btn" onclick="addRestTime(30)">+30с</button>
+    <button class="timer-mini-btn danger" onclick="stopRestTimer()">✕</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MATRIX MODAL ═══════════════════════ -->
+<div id="matrix-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this) closeMatrixModal()">
+  <div class="modal-card glass" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3>📊 6-Недельная Волновая Матрица</h3>
+      <button class="clear-btn" onclick="closeMatrixModal()">✕</button>
+    </div>
+    <div class="modal-body" id="matrix-modal-content">
+      <!-- Matrix populated by JS -->
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════ HEALTH MODAL ═══════════════════════ -->
 <div id="health-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this) closeHealthModal()">
