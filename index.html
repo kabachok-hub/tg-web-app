@@ -266,6 +266,17 @@
     <p class="empty-state">Ещё нет подходов</p>
   </div>
 
+  <!-- Quick Rest Timers -->
+  <div class="quick-timer-bar glass" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; margin-bottom:14px; border-radius:var(--radius-sm);">
+    <span style="font-size:0.78rem; font-weight:600; color:var(--text2);">⏳ Таймер отдыха:</span>
+    <div style="display:flex; gap:6px;">
+      <button class="chip" onclick="startRestTimer(60, workout.exercise || 'Отдых')">1м</button>
+      <button class="chip" onclick="startRestTimer(90, workout.exercise || 'Отдых')">1.5м</button>
+      <button class="chip active" onclick="startRestTimer(120, workout.exercise || 'Отдых')">2м</button>
+      <button class="chip" onclick="startRestTimer(180, workout.exercise || 'Отдых')">3м</button>
+    </div>
+  </div>
+
   <!-- Add Set -->
   <div class="workout-actions">
     <button class="btn-secondary" onclick="addSet()">➕ Добавить подход</button>
