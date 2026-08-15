@@ -1616,15 +1616,17 @@ function getWarmupLadder(exKey, workingWeight) {
 
   if (eq === 'barbell') {
     if (exKey === 'deadlift' || exKey === 'romanian_deadlift') {
-      const startW = workingWeight >= 60 ? 50.0 : Math.max(20.0, workingWeight * 0.5);
-      ladder.push({ step: 1, weight: startW, reps: 5, note: 'Старт, натяг и высота дисков' });
-      if (workingWeight > 70) ladder.push({ step: 2, weight: round25(workingWeight * 0.70), reps: 3, note: 'Скорость съема (70%)' });
-      if (workingWeight > 85) ladder.push({ step: 3, weight: round25(workingWeight * 0.88), reps: 1, note: 'Подводящий сингл (88% PAP)' });
+      const startW = workingWeight >= 60 ? 50.0 : Math.max(20.0, round25(workingWeight * 0.50));
+      ladder.push({ step: 1, weight: startW, reps: 5, note: 'Старт, натяг и высота дисков (50%)' });
+      if (workingWeight >= 65) ladder.push({ step: 2, weight: round25(workingWeight * 0.68), reps: 3, note: 'Скорость съема (68%)' });
+      if (workingWeight >= 75) ladder.push({ step: 3, weight: round25(workingWeight * 0.85), reps: 2, note: 'Подводящий мостик (85%)' });
+      if (workingWeight >= 85) ladder.push({ step: 4, weight: round25(workingWeight * 0.92), reps: 1, note: 'Финальный сингл (92%)' });
     } else {
-      ladder.push({ step: 1, weight: 20.0, reps: 10, note: 'Пустой гриф, траектория' });
-      if (workingWeight >= 40) ladder.push({ step: 2, weight: round25(workingWeight * 0.50), reps: 5, note: 'Включение моторных единиц (50%)' });
-      if (workingWeight >= 55) ladder.push({ step: 3, weight: round25(workingWeight * 0.72), reps: 3, note: 'Взрывной темп (72%)' });
-      if (workingWeight >= 70) ladder.push({ step: 4, weight: round25(workingWeight * 0.88), reps: 1, note: 'Подводящий сингл (88%)' });
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф, траектория' });
+      if (workingWeight >= 35) ladder.push({ step: 2, weight: round25(workingWeight * 0.50), reps: 5, note: 'Включение моторики (50%)' });
+      if (workingWeight >= 50) ladder.push({ step: 3, weight: round25(workingWeight * 0.70), reps: 3, note: 'Взрывной темп (70%)' });
+      if (workingWeight >= 60) ladder.push({ step: 4, weight: round25(workingWeight * 0.85), reps: 1, note: 'Подводящий сингл перед рабочим (85%)' });
+      if (workingWeight >= 80) ladder.push({ step: 5, weight: round25(workingWeight * 0.92), reps: 1, note: 'Финальная подводка (92%)' });
     }
   } else if (eq === 'dumbbell' || eq === 'machine') {
     if (workingWeight >= 20) {
