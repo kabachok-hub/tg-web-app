@@ -1892,19 +1892,32 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
     }
   }
 
-  const round25 = w => Math.max(20.0, Math.round(w / 2.5) * 2.5);
+  const round25 = w => Math.max(10.0, Math.round(w / 2.5) * 2.5);
   const createEx = (key, sets, reps, rpe) => {
     const ex = EXERCISE_CATALOG[key] || { name: key, muscle: 'Основная', category: 'other', rest: 120, tip: '' };
     let workW = 0.0;
     const factor = goal === 'strength' ? 0.82 : 0.75;
-    if (key === 'bench_press' && user1rm.bench_press) workW = round25(user1rm.bench_press * factor);
-    else if (key === 'squat' && user1rm.squat) workW = round25(user1rm.squat * factor);
-    else if (key === 'deadlift' && user1rm.deadlift) workW = round25(user1rm.deadlift * factor);
-    else if (key === 'overhead_press' && user1rm.bench_press) workW = round25(user1rm.bench_press * 0.60);
-    else if (key === 'barbell_row' && user1rm.bench_press) workW = round25(user1rm.bench_press * 0.70);
-    else if (key === 'romanian_deadlift' && user1rm.deadlift) workW = round25(user1rm.deadlift * 0.65);
+    const bench = parseFloat(user1rm.bench_press) || 68.0;
+    const squat = parseFloat(user1rm.squat) || 92.5;
+    const dead = parseFloat(user1rm.deadlift) || 100.0;
+
+    if (key === 'bench_press') workW = round25(bench * factor);
+    else if (key === 'squat') workW = round25(squat * factor);
+    else if (key === 'deadlift') workW = round25(dead * (goal === 'strength' ? 0.82 : 0.775));
+    else if (key === 'overhead_press') workW = round25(bench * 0.58);
+    else if (key === 'barbell_row') workW = round25(bench * 0.70);
+    else if (key === 'incline_dumbbell_press') workW = Math.max(10.0, Math.round(((bench * 0.50) / 2) / 2.0) * 2.0);
+    else if (key === 'romanian_deadlift') workW = round25(dead * 0.65);
+    else if (key === 'leg_press') workW = Math.round(squat * 1.25 / 5.0) * 5.0;
+    else if (key === 'lat_pulldown') workW = 42.5;
+    else if (key === 'seated_cable_row') workW = 45.0;
+    else if (key === 'lateral_raises') workW = 8.0;
+    else if (key === 'barbell_biceps_curl') workW = Math.max(15.0, round25(bench * 0.38));
+    else if (key === 'tricep_rope_pushdown' || key === 'skull_crushers') workW = Math.max(15.0, round25(bench * 0.35));
 
     if (goal === 'strength' && (reps === '6-8' || reps === '5-6')) reps = '3-5';
+
+    const isMainBase = (key === 'bench_press' || key === 'squat' || key === 'deadlift');
 
     return {
       key,
@@ -1918,12 +1931,19 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
       rest_sec: goal === 'strength' ? (ex.rest || 120) + 30 : (ex.rest || 120),
       base_weight: workW,
       working_weight: workW,
-      warmup_ladder: workW > 0 ? getWarmupLadder(key, workW) : [],
+      warmup_ladder: (workW > 0 && isMainBase) ? getWarmupLadder(key, workW) : [],
       pubmed_tip: ex.tip || ''
     };
   };
 
-  if (splitType === 'sbd_3d') {
+  if (splitType === 'recovery_3d') {
+    splitName = 'Anti-Overtraining Split: Верх / Низ / Тяга+Плечи (3 дня)';
+    daysLayout = [
+      { day_number: 1, title: 'День 1: Верх (Грудь + Спина + Плечи + Трицепс)', day_of_week: 'Понедельник', focus: 'Upper Body / 0% осевой нагрузки на позвоночник', exercises: [createEx('bench_press', 3, '6-8', 7.5), createEx('barbell_row', 3, '8-10', 7.5), createEx('incline_dumbbell_press', 3, '8-10', 8.0), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('lateral_raises', 3, '12-15', 8.5), createEx('tricep_rope_pushdown', 2, '10-12', 8.5)] },
+      { day_number: 2, title: 'День 2: Низ (Присед + Квадрицепс + Бицепс бедра + Пресс)', day_of_week: 'Среда', focus: 'Lower Squat & Quads / Верх полностью отдыхает', exercises: [createEx('squat', 3, '5-6', 7.5), createEx('leg_press', 3, '8-10', 8.0), createEx('leg_curl', 3, '10-12', 8.0), createEx('calf_raises', 3, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
+      { day_number: 3, title: 'День 3: Силовая тяга + Плечи + Бицепс', day_of_week: 'Пятница', focus: 'Deadlift & Shoulders / Задняя цепь и плечи', exercises: [createEx('deadlift', 3, '4-5', 7.5), createEx('overhead_press', 3, '6-8', 7.5), createEx('seated_cable_row', 3, '10-12', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-12', 8.5)] }
+    ];
+  } else if (splitType === 'sbd_3d') {
     splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
     daysLayout = [
       { day_number: 1, title: 'День 1: Squat Power (Присед + Квадрицепс + Кор)', day_of_week: 'Понедельник', focus: 'Squat Strength & Quads', exercises: [createEx('squat', 4, '3-5', 8.0), createEx('romanian_deadlift', 3, '6-8', 7.5), createEx('leg_press', 3, '8-10', 8.0), createEx('calf_raises', 4, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
