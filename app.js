@@ -1641,6 +1641,32 @@ function hasValidProgram(p) {
   return Boolean(p && typeof p === 'object' && Array.isArray(p.days) && p.days.length > 0);
 }
 
+// Wizard State
+let wizardState = {
+  goal: 'hypertrophy',
+  level: 'intermediate',
+  days: 4,
+  equipment: 'gym',
+  split: 'auto'
+};
+let selectedProgramDay = 0;
+
+function openProgramWizard() {
+  const container = $('program-container');
+  if (container) container.innerHTML = renderProgramWizardHTML();
+  const rebBtn = $('prog-rebuild-btn');
+  if (rebBtn) rebBtn.style.display = 'none';
+}
+
+function selectWizardOption(field, value, el) {
+  wizardState[field] = value;
+  const parent = el.closest('.wizard-options-grid');
+  if (parent) {
+    parent.querySelectorAll('.wizard-option').forEach(opt => opt.classList.remove('active'));
+  }
+  el.classList.add('active');
+}
+
 function getAvailableSplitsForDays(daysCount) {
   const d = parseInt(daysCount) || 4;
   if (d === 2) {
