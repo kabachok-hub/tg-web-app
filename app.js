@@ -75,6 +75,10 @@ async function loadData() {
     // Demo mode — load from localStorage
     const saved = localStorage.getItem('gym_db');
     if (saved) DB = JSON.parse(saved);
+    if (!hasValidProgram(DB.program)) {
+      DB.program = getDefaultPersonalProgram();
+      saveData();
+    }
     initUI(); return;
   }
   
@@ -85,11 +89,19 @@ async function loadData() {
     const r = await fetch(`${API}/data?uid=${uid}`, { signal: controller.signal });
     clearTimeout(timeoutId);
     DB = await r.json();
+    if (!hasValidProgram(DB.program)) {
+      DB.program = getDefaultPersonalProgram();
+      saveData();
+    }
   } catch (e) {
     clearTimeout(timeoutId);
     console.warn("API request failed or timed out. Falling back to localStorage.", e);
     const saved = localStorage.getItem('gym_db');
     if (saved) DB = JSON.parse(saved);
+    if (!hasValidProgram(DB.program)) {
+      DB.program = getDefaultPersonalProgram();
+      saveData();
+    }
   }
   initUI();
 }
@@ -1720,6 +1732,31 @@ function closeProgramWizard() {
   renderProgramTab();
 }
 
+function getDefaultPersonalProgram() {
+  return generateScientificProgram({
+    goal: 'hypertrophy',
+    level: 'intermediate',
+    days: 3,
+    equipment: 'gym',
+    split: 'recovery_3d',
+    user1rm: {
+      bench_press: 68.0,
+      squat: 90.0,
+      deadlift: 100.0
+    }
+  });
+}
+
+function applyPersonalTemplate() {
+  DB.program = getDefaultPersonalProgram();
+  isWizardOpen = false;
+  selectedProgramDay = 0;
+  saveData();
+  showToast('⭐ Твой персональный Anti-Overtraining план активирован!');
+  renderProgramTab();
+  renderDashboard();
+}
+
 function selectWizardOption(field, value, el) {
   wizardState[field] = value;
   const parent = el.closest('.wizard-options-grid');
@@ -1730,7 +1767,7 @@ function selectWizardOption(field, value, el) {
 }
 
 function getAvailableSplitsForDays(daysCount) {
-  const d = parseInt(daysCount) || 4;
+  const d = parseInt(daysCount) || 3;
   if (d === 2) {
     return [
       { id: 'auto', name: '🧬 ИИ Автовыбор', desc: 'Подбор под цели и слабые места' },
@@ -1739,6 +1776,7 @@ function getAvailableSplitsForDays(daysCount) {
     ];
   } else if (d === 3) {
     return [
+      { id: 'recovery_3d', name: '🛡 Anti-Overtraining 3D (Персональный)', desc: 'Верх / Низ / Тяга+Плечи (Защита ЦНС и связок)' },
       { id: 'auto', name: '🧬 ИИ Автовыбор', desc: 'Подбор под цели и слабые места' },
       { id: 'ppl_3d', name: '💪 Push / Pull / Legs', desc: 'Толкай / Тяни / Ноги (Золотой стандарт)' },
       { id: 'arnold_3d', name: '👑 Arnold Split', desc: 'Грудь+Спина / Руки+Плечи / Ноги (Арнольд)' },
@@ -1769,7 +1807,7 @@ function getAvailableSplitsForDays(daysCount) {
 
 function analyzeAthleteProfileJS(workouts, user1rm) {
   const bench = parseFloat(user1rm.bench_press) || 68.0;
-  const squat = parseFloat(user1rm.squat) || 92.5;
+  const squat = parseFloat(user1rm.squat) || 90.0;
   const dead = parseFloat(user1rm.deadlift) || 100.0;
 
   const benchRatio = (bench / (squat || 1));
@@ -1803,7 +1841,7 @@ function renderProgramWizardHTML() {
   });
 
   const defBench = records['Жим лёжа'] || 68.0;
-  const defSquat = records['Присед'] || 92.5;
+  const defSquat = records['Присед'] || 90.0;
   const defDead = records['Становая тяга'] || 100.0;
 
   const splits = getAvailableSplitsForDays(wizardState.days);
@@ -1819,6 +1857,19 @@ function renderProgramWizardHTML() {
         ${hasValidProgram(DB.program) ? `
           <button class="clear-btn" style="font-size:1.2rem; padding:2px 8px; color:var(--text2);" onclick="closeProgramWizard()" title="Назад к программе">✕</button>
         ` : ''}
+      </div>
+
+      <!-- ⭐ Personal 1-Click Template Banner -->
+      <div style="background:linear-gradient(135deg, rgba(124,92,255,0.22), rgba(0,229,200,0.18)); border:1px solid rgba(0,229,200,0.45); border-radius:14px; padding:12px 14px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div>
+            <div style="font-size:0.85rem; font-weight:800; color:#5eead4;">⭐ Твой персональный Anti-Overtraining план</div>
+            <div style="font-size:0.72rem; color:var(--text2); margin-top:2px;">3 дня (Жим 68 / Присед 90 / Тяга 100) + 0% осевого перегруза + 6 недель</div>
+          </div>
+          <button class="btn-primary" style="padding:8px 14px; font-size:0.78rem; font-weight:800; white-space:nowrap;" onclick="applyPersonalTemplate()">
+            Активировать
+          </button>
+        </div>
       </div>
 
       <div class="wizard-step-title">🎯 1. Главная цель тренировок</div>
@@ -2170,7 +2221,7 @@ function setProgramWeek(weekNum) {
         ex.sets = ex.base_sets;
         ex.reps = isBaseLift ? '4' : (ex.category === 'compound' ? '6-8' : '10-12');
       } else if (weekNum === 4) {
-        ex.sets = ex.base_sets + 1; // Пиковый объем (+1 подход)
+        ex.sets = Math.min(4, ex.base_sets + 1); // Пиковый объем (макс 4 подхода)
         ex.reps = isBaseLift ? '3-4' : (ex.category === 'compound' ? '6-8' : '10-12');
       } else if (weekNum === 5) {
         ex.sets = Math.max(2, ex.base_sets - 1); // PR Неделя рекордов: 2 тяжелых подхода!
