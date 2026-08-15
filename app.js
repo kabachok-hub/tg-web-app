@@ -1817,23 +1817,28 @@ function renderProgramWizardHTML() {
         </div>
       </div>
 
-      <div class="wizard-step-title">⚖️ 5. Твои разовые максимумы (1ПМ, кг)</div>
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px;">
-        <div>
-          <label style="font-size:0.7rem; color:var(--text2);">Жим лёжа</label>
-          <input type="number" id="wiz-bench" class="glass-input" value="${defBench}" step="2.5" style="padding:8px; font-weight:700;"/>
+      <div class="wizard-step-title">⚖️ 5. Твои силовые максимумы (1ПМ, кг)</div>
+      <p style="font-size:0.72rem; color:var(--accent3); margin-top:-6px; margin-bottom:10px;">✨ Автоматически подтянуты твои лучшие рекорды из дневника:</p>
+      
+      <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-bottom:16px; width:100%; box-sizing:border-box;">
+        <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:10px 4px; text-align:center; min-width:0;">
+          <div style="font-size:0.72rem; color:var(--text2); font-weight:700; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">💪 Жим лёжа</div>
+          <input type="number" id="wiz-bench" class="glass-input" value="${defBench}" step="2.5" style="width:100%; box-sizing:border-box; min-width:0; padding:8px 2px; text-align:center; font-weight:800; font-size:1.05rem; background:rgba(0,0,0,0.3); border:1px solid rgba(124,92,255,0.4); border-radius:8px; color:var(--text);"/>
+          <span style="font-size:0.65rem; color:var(--text2); margin-top:2px; display:block;">1ПМ (кг)</span>
         </div>
-        <div>
-          <label style="font-size:0.7rem; color:var(--text2);">Присед</label>
-          <input type="number" id="wiz-squat" class="glass-input" value="${defSquat}" step="2.5" style="padding:8px; font-weight:700;"/>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:10px 4px; text-align:center; min-width:0;">
+          <div style="font-size:0.72rem; color:var(--text2); font-weight:700; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🦵 Присед</div>
+          <input type="number" id="wiz-squat" class="glass-input" value="${defSquat}" step="2.5" style="width:100%; box-sizing:border-box; min-width:0; padding:8px 2px; text-align:center; font-weight:800; font-size:1.05rem; background:rgba(0,0,0,0.3); border:1px solid rgba(124,92,255,0.4); border-radius:8px; color:var(--text);"/>
+          <span style="font-size:0.65rem; color:var(--text2); margin-top:2px; display:block;">1ПМ (кг)</span>
         </div>
-        <div>
-          <label style="font-size:0.7rem; color:var(--text2);">Становая тяга</label>
-          <input type="number" id="wiz-dead" class="glass-input" value="${defDead}" step="2.5" style="padding:8px; font-weight:700;"/>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:10px 4px; text-align:center; min-width:0;">
+          <div style="font-size:0.72rem; color:var(--text2); font-weight:700; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🔗 Тяга</div>
+          <input type="number" id="wiz-dead" class="glass-input" value="${defDead}" step="2.5" style="width:100%; box-sizing:border-box; min-width:0; padding:8px 2px; text-align:center; font-weight:800; font-size:1.05rem; background:rgba(0,0,0,0.3); border:1px solid rgba(124,92,255,0.4); border-radius:8px; color:var(--text);"/>
+          <span style="font-size:0.65rem; color:var(--text2); margin-top:2px; display:block;">1ПМ (кг)</span>
         </div>
       </div>
 
-      <button class="btn-primary" onclick="generateProgramFromWizard()" style="margin-top: 6px; padding: 14px; font-size: 0.95rem; font-weight:800;">
+      <button class="btn-primary" onclick="generateProgramFromWizard()" style="margin-top: 6px; padding: 14px; font-size: 0.95rem; font-weight:800; width:100%;">
         ✨ Сгенерировать адаптированную программу
       </button>
     </div>
