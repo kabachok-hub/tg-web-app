@@ -1226,3 +1226,60 @@ svg defs { display: block; }
 }
 .matrix-ex-table th { color: var(--text2); }
 
+/* AI Coach Message Bubbles */
+.ai-msg {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  animation: fadeIn 0.2s ease;
+  word-break: break-word;
+}
+.ai-msg.assistant {
+  align-self: flex-start;
+  background: rgba(124, 92, 255, 0.12);
+  border: 1px solid rgba(124, 92, 255, 0.28);
+  color: #e2e8f0;
+  max-width: 90%;
+}
+.ai-msg.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  font-weight: 600;
+  max-width: 85%;
+  border-radius: 14px 14px 2px 14px;
+}
+
+/* Enhanced Week Phase Badges */
+.week-stepper-btn {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+}
+.week-stepper-btn:active { transform: scale(0.95); }
+.week-stepper-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(124,92,255,0.4);
+}
+.week-stepper-btn.pr.active {
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  border-color: #ff4b2b;
+  box-shadow: 0 4px 14px rgba(255,75,43,0.45);
+}
+.week-stepper-btn.deload.active {
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+  border-color: #00b09b;
+  box-shadow: 0 4px 14px rgba(0,176,155,0.4);
+}
+

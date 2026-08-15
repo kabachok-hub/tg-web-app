@@ -559,8 +559,29 @@ async function saveWorkout() {
     }
   }
 
+  // PR Detection Check
+  let newPrFound = null;
+  workout.sets.forEach(s => {
+    const w = parseFloat(s.weight) || 0;
+    const r = parseFloat(s.reps) || 0;
+    if (w > 0 && r > 0) {
+      const e = epley(w, r);
+      if (!DB.profile.records) DB.profile.records = {};
+      const currentPr = DB.profile.records[s.exercise] || 0;
+      if (e > currentPr) {
+        DB.profile.records[s.exercise] = e;
+        newPrFound = { exercise: s.exercise, e1rm: e, weight: w, reps: r };
+      }
+    }
+  });
+
   await saveData();
-  showToast('✅ Тренировка сохранена!');
+  if (newPrFound) {
+    showToast(`🏆 Новый рекорд в ${newPrFound.exercise}: ${newPrFound.weight}кг × ${newPrFound.reps} (1ПМ ${newPrFound.e1rm}кг)!`);
+  } else {
+    showToast('✅ Тренировка сохранена!');
+  }
+
   // Сброс состояния: упражнение и подходы сбрасываются, дата ОСТАЁТСЯ как есть
   const keepDate = getDateFromUI();
   workout = { exercise: '', date: keepDate, sets: [], rpe: 'Легко', weight: 80, reps: 8 };
@@ -568,7 +589,6 @@ async function saveWorkout() {
   document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('active'));
   const greenBtn = document.querySelector('.rpe-btn.green');
   if (greenBtn) greenBtn.classList.add('active');
-  // Дата НЕ сбрасывается — чипы и input остаются как есть
   renderSetsLog();
   resetRIR();
   $('save-btn').style.display = 'none';
@@ -577,6 +597,42 @@ async function saveWorkout() {
   renderExerciseChips();
   renderQuickWeights();
   renderDashboard();
+}
+
+function selectExerciseByName(name) {
+  workout.exercise = name;
+  const disp = $('selected-exercise-display');
+  const nameSpan = $('selected-ex-name');
+  if (disp && nameSpan) {
+    nameSpan.textContent = name;
+    disp.style.display = 'flex';
+  }
+  document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => {
+    if (c.textContent.trim().toLowerCase() === name.trim().toLowerCase()) c.classList.add('active');
+    else c.classList.remove('active');
+  });
+}
+
+function prefillAndGoToWorkout(exName, targetWeight, targetReps) {
+  switchTab('workout');
+  selectExerciseByName(exName);
+  if (targetWeight > 0) {
+    workout.weight = targetWeight;
+    const wInput = $('weight-input');
+    const wSlider = $('weight-slider');
+    if (wInput) wInput.value = targetWeight;
+    if (wSlider) wSlider.value = targetWeight;
+  }
+  if (targetReps) {
+    const numReps = parseInt(targetReps) || 8;
+    workout.reps = numReps;
+    const rInput = $('reps-input');
+    const rSlider = $('reps-slider');
+    if (rInput) rInput.value = numReps;
+    if (rSlider) rSlider.value = numReps;
+  }
+  updateE1RM();
+  showToast(`🎯 Подготовлено: ${exName} @ ${targetWeight} кг`);
 }
 
 // ── Diary ──
@@ -2072,18 +2128,48 @@ function setProgramWeek(weekNum) {
   if (!hasValidProgram(DB.program)) return;
   DB.program.current_week = weekNum;
 
-  // Scale weights for new week's intensity
+  // Scale weights and reps for new week's intensity
   const matrix = DB.program.wave_matrix || [];
   const currentWeekInfo = matrix.find(m => m.week_number === weekNum);
   const intensityFactor = currentWeekInfo ? (currentWeekInfo.intensity_pct / 75.0) : 1.0;
 
   DB.program.days.forEach(day => {
-    day.exercises.forEach(ex => {
+    day.exercises.forEach((ex, idx) => {
+      if (!ex.base_sets) ex.base_sets = ex.sets || 3;
+      if (!ex.base_weight && ex.working_weight) ex.base_weight = ex.working_weight;
+
       if (ex.base_weight && ex.base_weight > 0) {
         const scaled = Math.round((ex.base_weight * intensityFactor) / 2.5) * 2.5;
-        ex.working_weight = Math.max(20.0, scaled);
-        ex.warmup_ladder = getWarmupLadder(ex.key || 'bench_press', ex.working_weight);
+        ex.working_weight = Math.max(10.0, scaled);
+        // Only 1st main compound exercise of the day gets warmup ladder!
+        const isMainBase = (idx === 0 || ex.key === 'bench_press' || ex.key === 'squat' || ex.key === 'deadlift');
+        ex.warmup_ladder = isMainBase ? getWarmupLadder(ex.key || 'bench_press', ex.working_weight) : [];
+      } else {
+        ex.warmup_ladder = [];
       }
+
+      // Dynamic Reps & Sets scaling per Week
+      const isBaseLift = (ex.key === 'squat' || ex.key === 'bench_press' || ex.key === 'deadlift');
+      if (weekNum === 1) {
+        ex.sets = ex.base_sets;
+        ex.reps = isBaseLift ? '5-6' : (ex.category === 'compound' ? '8-10' : '12-15');
+      } else if (weekNum === 2) {
+        ex.sets = ex.base_sets;
+        ex.reps = isBaseLift ? '5' : (ex.category === 'compound' ? '8-10' : '12-15');
+      } else if (weekNum === 3) {
+        ex.sets = ex.base_sets;
+        ex.reps = isBaseLift ? '4' : (ex.category === 'compound' ? '6-8' : '10-12');
+      } else if (weekNum === 4) {
+        ex.sets = ex.base_sets + 1; // Пиковый объем (+1 подход)
+        ex.reps = isBaseLift ? '3-4' : (ex.category === 'compound' ? '6-8' : '10-12');
+      } else if (weekNum === 5) {
+        ex.sets = Math.max(2, ex.base_sets - 1); // PR Неделя рекордов: 2 тяжелых подхода!
+        ex.reps = isBaseLift ? '2-3' : (ex.category === 'compound' ? '5-6' : '8-10');
+      } else if (weekNum === 6) {
+        ex.sets = 2; // Deload: 2 легких подхода!
+        ex.reps = isBaseLift ? '5' : (ex.category === 'compound' ? '6-8' : '10');
+      }
+
       if (currentWeekInfo) {
         ex.target_rpe = currentWeekInfo.target_rpe;
         ex.target_rir = Math.max(0, Math.round(10 - currentWeekInfo.target_rpe));
@@ -2144,15 +2230,21 @@ function renderActiveProgramHTML() {
       <!-- Week Stepper Chips -->
       <div style="margin-top:12px;">
         <div style="font-size:0.75rem; color:var(--text2); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
-          <span>📈 Текущая неделя мезоцикла:</span>
+          <span>📈 Неделя мезоцикла (5 нед прогресса + 1 делоад):</span>
           <button class="chip" style="padding:2px 8px; font-size:0.7rem;" onclick="openMatrixModal()">📊 Вся матрица</button>
         </div>
-        <div style="display:flex; gap:5px; overflow-x:auto; padding-bottom:4px;">
-          ${[1, 2, 3, 4, 5, 6].map(w => `
-            <button class="chip ${w===currentWeek?'active':''}" style="flex:1; padding:6px 4px; font-size:0.72rem; font-weight:700; text-align:center;" onclick="setProgramWeek(${w})">
-              Нед ${w} ${w===5?'🔥':w===6?'🍃':''}
-            </button>
-          `).join('')}
+        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;">
+          ${[1, 2, 3, 4, 5, 6].map(w => {
+            const isPr = w === 5;
+            const isDeload = w === 6;
+            const cls = `week-stepper-btn ${isPr ? 'pr' : isDeload ? 'deload' : ''} ${w === currentWeek ? 'active' : ''}`;
+            const label = w === 5 ? '🔥 Нед 5' : w === 6 ? '🍃 Нед 6' : `Нед ${w}`;
+            return `
+              <button class="${cls}" onclick="setProgramWeek(${w})">
+                ${label}
+              </button>
+            `;
+          }).join('')}
         </div>
       </div>
     </div>
@@ -2194,7 +2286,7 @@ function renderActiveProgramHTML() {
           <p style="font-size:0.75rem; color:var(--text2);">${day.focus || 'Силовой блок'}</p>
         </div>
         <button class="btn-primary" style="padding:8px 14px; font-size:0.78rem;" onclick="launchWorkoutFromProgram(${selectedProgramDay})">
-          ▶️ Начать
+          ▶️ Запустить день
         </button>
       </div>
 
@@ -2211,7 +2303,15 @@ function renderActiveProgramHTML() {
                 <div class="plan-meta-item">🎯 <strong>${ex.sets}</strong> подх × <strong>${ex.reps}</strong></div>
                 <div class="plan-meta-item">⚡ RPE <strong>${ex.target_rpe}</strong> (RIR ${ex.target_rir})</div>
                 ${ex.working_weight > 0 ? `<div class="plan-meta-item">⚖️ <strong>${ex.working_weight} кг</strong></div>` : ''}
-                <button class="timer-mini-btn" onclick="startRestTimer(${ex.rest_sec || 120}, '${ex.name}')">⏳ Отдых ${Math.round((ex.rest_sec||120)/60)}м</button>
+              </div>
+
+              <div style="display:flex; gap:6px; margin: 8px 0 4px; align-items:center;">
+                <button class="chip" style="background:rgba(0,229,200,0.15); border:1px solid rgba(0,229,200,0.35); color:#5eead4; font-size:0.72rem; font-weight:700; padding:4px 10px;" onclick="prefillAndGoToWorkout('${ex.name.replace(/'/g, "\\'")}', ${ex.working_weight || 0}, '${ex.reps}')">
+                  ▶️ В Запись
+                </button>
+                <button class="timer-mini-btn" onclick="startRestTimer(${ex.rest_sec || 120}, '${ex.name.replace(/'/g, "\\'")}')">
+                  ⏳ Отдых ${Math.round((ex.rest_sec||120)/60)}м
+                </button>
               </div>
               
               ${hasWarmup ? `
@@ -2251,6 +2351,132 @@ function selectProgramDay(idx) {
 function toggleWarmup(id) {
   const el = $(id);
   if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+// ═══════════════════════ GEMINI AI COACH ═══════════════════════
+function openAiCoachModal() {
+  const m = $('ai-coach-modal');
+  if (m) m.style.display = 'flex';
+  const inp = $('gemini-api-key-input');
+  if (inp && DB.gemini_key) inp.value = DB.gemini_key;
+}
+
+function closeAiCoachModal() {
+  const m = $('ai-coach-modal');
+  if (m) m.style.display = 'none';
+}
+
+function toggleApiKeyInput() {
+  const b = $('api-key-box');
+  if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveGeminiApiKey() {
+  const key = ($('gemini-api-key-input').value || '').trim();
+  DB.gemini_key = key;
+  saveData();
+  showToast(key ? '🔑 API-ключ Gemini сохранен!' : 'Ключ удален');
+  const b = $('api-key-box');
+  if (b) b.style.display = 'none';
+}
+
+function setCoachPrompt(txt) {
+  const inp = $('ai-coach-input');
+  if (inp) {
+    inp.value = txt;
+    inp.focus();
+  }
+}
+
+async function sendAiCoachMessage() {
+  const inp = $('ai-coach-input');
+  const txt = (inp.value || '').trim();
+  if (!txt) return;
+  inp.value = '';
+
+  const chat = $('ai-chat-messages');
+  if (!chat) return;
+
+  // Render User Bubble
+  chat.innerHTML += `<div class="ai-msg user">${txt}</div>`;
+  chat.scrollTop = chat.scrollHeight;
+
+  // Render Typing Placeholder
+  const placeholderId = 'ai-typing-' + Date.now();
+  chat.innerHTML += `<div class="ai-msg assistant" id="${placeholderId}">⏳ ИИ-Тренер анализирует научную базу и ваши силовые...</div>`;
+  chat.scrollTop = chat.scrollHeight;
+
+  const key = DB.gemini_key;
+  const ws = DB.workouts || [];
+  const records = DB.profile.records || {};
+  const prog = DB.program;
+
+  // Prepare prompt context
+  const contextStr = `
+Ты — элитный научный тренер по силовым тренировкам (Evidence-Based Strength Coach) на основе мета-анализов PubMed (Schoenfeld, Helms, Zourdos, Latash).
+Данные атлета:
+- 1RM Рекорды: Жим лёжа: ${records['Жим лёжа'] || 68} кг, Присед: ${records['Присед'] || 90} кг, Становая тяга: ${records['Становая тяга'] || 100} кг.
+- Активная программа: ${prog ? `${prog.split_name}, Неделя ${prog.current_week || 1} из 6` : 'Не выбрана'}.
+- Особенность атлета: Медленный тип восстановления, высокая чувствительность к осевым нагрузкам на позвоночник.
+- Всего тренировок в дневнике: ${ws.length}.
+
+Вопрос атлета: "${txt}".
+
+Ответь кратко, четко, с научным объяснением (PubMed), практическими цифрами и вдохновляющим тоном. Не используй воду.
+  `.trim();
+
+  let replyText = '';
+
+  if (key) {
+    try {
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: contextStr }] }]
+        })
+      });
+      const data = await resp.json();
+      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+        replyText = data.candidates[0].content.parts[0].text;
+      } else if (data.error) {
+        replyText = `⚠️ Ошибка Gemini API: ${data.error.message || 'Проверьте API-ключ'}`;
+      }
+    } catch (err) {
+      replyText = `⚠️ Ошибка сети при запросе к Gemini: ${err.message}`;
+    }
+  }
+
+  if (!replyText) {
+    // Offline / Fallback Evidence-based response engine
+    const lower = txt.toLowerCase();
+    if (lower.includes('восстанов') || lower.includes('сон') || lower.includes('устал')) {
+      replyText = `😴 **Научный разбор восстановления (PubMed):**
+1. **Разнос осевых нагрузок:** Не делайте присед и тягу в один день. Между ними должно быть минимум 48 часов отдыха (*Latash, 2008*).
+2. **Сон 8+ часов:** 95% гормона роста и синтеза мышечного белка выделяется в глубоких фазах сна (*Dattilo et al., 2011*).
+3. **Волновая периодизация:** После 5 недель прогресса обязательно делайте 6-ю неделю Deload (55% от 1ПМ), чтобы дать ЦНС полностью восстановиться.`;
+    } else if (lower.includes('плато') || lower.includes('жим')) {
+      replyText = `💪 **Как пробить плато в жиме лёжа (PubMed):**
+1. **Баланс тяг к жимам 1:1:** Добавьте тягу штанги в наклоне с весом 70% от жима (47.5 кг). Это стабилизирует плечевой сустав (*Cools et al., 2015*).
+2. **Наклонный жим гантелей 30°:** 3 подхода по 8-10 повт с гантелями по 16-18 кг укрепят верх груди.
+3. **Работа с запасом RIR 1-2:** Не жмите до отказа на каждой тренировке — работа на RPE 7.5-8.0 дает максимум гипертрофии без выжигания нервной системы (*Helms, 2018*).`;
+    } else if (lower.includes('белок') || lower.includes('питан') || lower.includes('калор')) {
+      replyText = `🥩 **Нормы питания для натурального атлета (Morton et al., 2018):**
+1. **Белок:** 1.6–2.0 г на 1 кг веса тела в сутки, разбитый на 3–4 приема по 30–40 г.
+2. **Вода:** 35–40 мл на кг веса (2.5–3.0 л в день) для оптимального синтеза гликогена.
+3. **Креатин моногидрат:** 5 г в день ежедневно для увеличения запасов фосфокреатина и роста силы на 5–10%.`;
+    } else {
+      replyText = `🧬 **Рекомендация по программе:**
+Ваш текущий 6-недельный цикл рассчитан строго по формуле 1RM Эпли. На текущей неделе придерживайтесь целевого RPE и делайте плавную разминку для первого упражнения дня.
+💡 *Для интерактивного диалога с нейросетью вставьте бесплатный API-ключ в поле Google AI Studio выше!*`;
+    }
+  }
+
+  const el = $(placeholderId);
+  if (el) {
+    el.innerHTML = replyText.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>');
+    chat.scrollTop = chat.scrollHeight;
+  }
 }
 
 function launchWorkoutFromProgram(dayIdx) {

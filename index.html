@@ -95,6 +95,16 @@
     </div>
   </div>
 
+  <!-- Gemini AI Coach Banner -->
+  <div class="ai-coach-banner glass" onclick="openAiCoachModal()" style="padding:14px 16px; margin-bottom:16px; background:linear-gradient(135deg, rgba(0,229,200,0.12), rgba(124,92,255,0.15)); border:1px solid rgba(0,229,200,0.3); border-radius:var(--radius); cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:transform 0.2s;">
+    <div class="ai-coach-left">
+      <span class="badge" style="background: rgba(0, 229, 200, 0.25); color: #5eead4; border: 1px solid rgba(0, 229, 200, 0.4); font-size:0.7rem; font-weight:700;">✨ Google Gemini AI</span>
+      <h3 style="margin-top: 4px; font-size: 0.95rem; font-weight:800;">Персональный ИИ-Тренер</h3>
+      <p style="font-size: 0.74rem; color: var(--text2); margin-top: 2px;">Анализ утомления, совет по нагрузке и восстановлению</p>
+    </div>
+    <button class="chip" style="background:var(--accent); color:#fff; border:none; padding:6px 12px; font-size:0.74rem; font-weight:700; flex-shrink:0;">Спросить ИИ</button>
+  </div>
+
   <!-- PubMed Knowledge Hub Card -->
   <div class="pubmed-hub-card glass" onclick="openPubmedModal()">
     <div class="pubmed-hub-info">
@@ -509,6 +519,59 @@
       
       <div class="pubmed-topics-list" id="pubmed-topics-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 50vh; overflow-y: auto; padding-right: 4px;">
         <!-- Topics populated by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ GEMINI AI COACH MODAL ═══════════════════════ -->
+<div id="ai-coach-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this) closeAiCoachModal()">
+  <div class="modal-card glass" style="max-width: 480px; width: 100%; display: flex; flex-direction: column; max-height: 85vh; padding: 18px;">
+    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:1.4rem;">🤖</span>
+        <div>
+          <h3 style="font-size:0.95rem; font-weight:800; margin:0;">Gemini AI Научный Тренер</h3>
+          <small style="font-size:0.68rem; color:var(--accent3);">PubMed & SBD Knowledge Engine</small>
+        </div>
+      </div>
+      <button class="clear-btn" onclick="closeAiCoachModal()">✕</button>
+    </div>
+    
+    <div class="modal-body" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:0;">
+      <!-- API Key config row -->
+      <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:10px; padding:8px 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; font-weight:700; color:var(--text2);">
+          <span>🔑 Google AI Studio API Key</span>
+          <button class="chip" style="padding:2px 6px; font-size:0.65rem;" onclick="toggleApiKeyInput()">Настроить</button>
+        </div>
+        <div id="api-key-box" style="display:none; margin-top:6px;">
+          <input type="password" id="gemini-api-key-input" class="glass-input" placeholder="Вставь API-ключ Gemini..." style="width:100%; box-sizing:border-box; font-size:0.78rem; padding:6px;"/>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+            <small style="font-size:0.65rem; color:var(--text2);"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent3); text-decoration:underline;">Получить ключ бесплатно</a></small>
+            <button class="btn-primary" style="padding:3px 10px; font-size:0.7rem;" onclick="saveGeminiApiKey()">Сохранить</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick prompts -->
+      <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;" class="day-chips-scroll">
+        <button class="chip" style="white-space:nowrap; font-size:0.7rem;" onclick="setCoachPrompt('Проанализируй мои силовые и восстановление: что делать на следующей тренировке?')">😴 Моё восстановление</button>
+        <button class="chip" style="white-space:nowrap; font-size:0.7rem;" onclick="setCoachPrompt('Как преодолеть плато в жиме лёжа и почему вес стоит?')">💪 Плато в жиме</button>
+        <button class="chip" style="white-space:nowrap; font-size:0.7rem;" onclick="setCoachPrompt('Сколько белка и калорий мне нужно для роста мышц при тренировках 3 дня в неделю?')">🥩 Белок и питание</button>
+      </div>
+
+      <!-- Chat History -->
+      <div id="ai-chat-messages" style="flex:1; min-height:160px; max-height:36vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:6px; background:rgba(0,0,0,0.2); border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
+        <div class="ai-msg assistant" style="background:rgba(124,92,255,0.15); border:1px solid rgba(124,92,255,0.3); border-radius:10px; padding:8px 10px; font-size:0.78rem; line-height:1.4;">
+          👋 Привет! Я твой персональный AI-тренер на базе Google Gemini и доказательной медицины PubMed. Я знаю твои силовые в жиме, приседе и тяге. Напиши любой вопрос по программе, самочувствию или технике!
+        </div>
+      </div>
+
+      <!-- Prompt Input -->
+      <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+        <input type="text" id="ai-coach-input" class="glass-input" placeholder="Спроси тренера..." style="flex:1; padding:8px 10px; font-size:0.82rem;" onkeydown="if(event.key==='Enter') sendAiCoachMessage()"/>
+        <button class="btn-primary" id="ai-send-btn" style="padding:8px 14px; font-size:0.85rem;" onclick="sendAiCoachMessage()">➤</button>
       </div>
     </div>
   </div>
