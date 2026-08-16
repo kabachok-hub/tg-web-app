@@ -2204,13 +2204,16 @@ function setProgramWeek(weekNum) {
 
   const matrix = DB.program.wave_matrix || [];
   const currentWeekInfo = matrix.find(m => m.week_number === weekNum);
+  const cycleCount = DB.program.cycle_count || 1;
+  const upperProg = (cycleCount - 1) * 2.5;
+  const lowerProg = (cycleCount - 1) * 5.0;
 
   // Exact target weights for SBD in recovery_3d:
   const sbdSchedule = {
-    bench_mon: [50.0, 52.5, 55.0, 57.5, 62.5, 37.5],
-    bench_fri: [45.0, 47.5, 50.0, 52.5, 50.0, 35.0],
-    squat_mon: [55.0, 65.0, 72.5, 77.5, 82.5, 50.0],
-    dead_wed:  [70.0, 77.5, 82.5, 85.0, 90.0, 55.0]
+    bench_mon: [50.0 + upperProg, 52.5 + upperProg, 55.0 + upperProg, 57.5 + upperProg, 62.5 + upperProg, Math.round((37.5 + upperProg * 0.6)/2.5)*2.5],
+    bench_fri: [45.0 + upperProg, 47.5 + upperProg, 50.0 + upperProg, 52.5 + upperProg, 50.0 + upperProg, Math.round((35.0 + upperProg * 0.6)/2.5)*2.5],
+    squat_mon: [55.0 + lowerProg, 65.0 + lowerProg, 72.5 + lowerProg, 77.5 + lowerProg, 82.5 + lowerProg, Math.round((50.0 + lowerProg * 0.6)/2.5)*2.5],
+    dead_wed:  [70.0 + lowerProg, 77.5 + lowerProg, 82.5 + lowerProg, 85.0 + lowerProg, 90.0 + lowerProg, Math.round((55.0 + lowerProg * 0.6)/2.5)*2.5]
   };
 
   DB.program.days.forEach((day, dayIdx) => {
@@ -2249,22 +2252,22 @@ function setProgramWeek(weekNum) {
       const isBaseLift = (ex.key === 'squat' || ex.key === 'bench_press' || ex.key === 'deadlift');
       if (weekNum === 1) {
         ex.sets = ex.base_sets;
-        ex.reps = isBaseLift ? '6' : (ex.category === 'compound' ? '8-10' : (ex.reps === '50' ? '50' : '10-12'));
+        ex.reps = isBaseLift ? '6' : (ex.category === 'compound' ? '8-10' : (ex.key === 'crunches' ? '50' : '10-12'));
       } else if (weekNum === 2) {
         ex.sets = ex.base_sets;
-        ex.reps = isBaseLift ? '5' : (ex.category === 'compound' ? '8-10' : (ex.reps === '50' ? '50' : '10-12'));
+        ex.reps = isBaseLift ? '5' : (ex.category === 'compound' ? '8-10' : (ex.key === 'crunches' ? '50' : '10-12'));
       } else if (weekNum === 3) {
         ex.sets = ex.base_sets;
-        ex.reps = isBaseLift ? '4' : (ex.category === 'compound' ? '6-8' : (ex.reps === '50' ? '50' : '10-12'));
+        ex.reps = isBaseLift ? '4' : (ex.category === 'compound' ? '6-8' : (ex.key === 'crunches' ? '50' : '10-12'));
       } else if (weekNum === 4) {
         ex.sets = isBaseLift ? Math.min(4, ex.base_sets + 1) : Math.max(2, ex.base_sets - 1);
-        ex.reps = isBaseLift ? '3-4' : (ex.category === 'compound' ? '6-8' : (ex.reps === '50' ? '50' : '10'));
+        ex.reps = isBaseLift ? '3-4' : (ex.category === 'compound' ? '6-8' : (ex.key === 'crunches' ? '50' : '10'));
       } else if (weekNum === 5) {
         ex.sets = isBaseLift ? 2 : Math.max(1, ex.base_sets - 1);
-        ex.reps = isBaseLift ? '2-3' : (ex.category === 'compound' ? '5-6' : (ex.reps === '50' ? '35-40' : '8-10'));
+        ex.reps = isBaseLift ? '2-3' : (ex.category === 'compound' ? '5-6' : (ex.key === 'crunches' ? '35-40' : '8-10'));
       } else if (weekNum === 6) {
         ex.sets = 2;
-        ex.reps = isBaseLift ? '5' : (ex.category === 'compound' ? '6-8' : (ex.reps === '50' ? '30' : '10'));
+        ex.reps = isBaseLift ? '5' : (ex.category === 'compound' ? '6-8' : (ex.key === 'crunches' ? '30' : '10'));
       }
 
       if (currentWeekInfo) {
@@ -2276,6 +2279,17 @@ function setProgramWeek(weekNum) {
 
   saveData();
   showToast(`📈 Переключено на Неделю ${weekNum} (${currentWeekInfo ? currentWeekInfo.phase : ''})!`);
+  renderProgramTab();
+  renderDashboard();
+}
+
+function startNextMesocycle() {
+  if (!hasValidProgram(DB.program)) return;
+  DB.program.cycle_count = (DB.program.cycle_count || 1) + 1;
+  DB.program.current_week = 1;
+  setProgramWeek(1);
+  saveData();
+  showToast(`🚀 Запущен Цикл ${DB.program.cycle_count}! Базовые веса повышены (+2.5 кг жим, +5 кг присед/тяга)!`);
   renderProgramTab();
   renderDashboard();
 }
@@ -2304,6 +2318,7 @@ function renderActiveProgramHTML() {
 
   const gName = p.goal === 'hypertrophy' ? '💪 Гипертрофия' : p.goal === 'strength' ? '🏋️ Сила (SBD)' : p.goal === 'recomp' ? '⚖️ Рекомпозиция' : '⚡ Выносливость';
   const lName = p.level === 'beginner' ? '🌱 Новичок' : p.level === 'advanced' ? '👑 Опытный' : '🚀 Средний';
+  const cycleNum = p.cycle_count || 1;
 
   return `
     <div class="prog-hero-card glass">
@@ -2312,6 +2327,7 @@ function renderActiveProgramHTML() {
           <div class="prog-badge-row">
             <span class="badge" style="background:rgba(124,92,255,0.25); color:#c4b5fd; border:1px solid rgba(124,92,255,0.4);">${gName}</span>
             <span class="badge" style="background:rgba(0,229,200,0.2); color:#5eead4; border:1px solid rgba(0,229,200,0.35);">${lName}</span>
+            <span class="badge" style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid rgba(234,179,8,0.35);">🏆 Цикл ${cycleNum}</span>
             <span class="badge" style="background:rgba(255,255,255,0.1);">${p.days_per_week} дн/нед</span>
           </div>
           <h2 class="prog-hero-title">${p.split_name}</h2>
@@ -2344,6 +2360,18 @@ function renderActiveProgramHTML() {
           }).join('')}
         </div>
       </div>
+
+      ${currentWeek === 6 ? `
+        <div style="margin-top:12px; padding:10px 14px; background:linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,95,70,0.25)); border:1px solid rgba(16,185,129,0.4); border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:800; font-size:0.85rem; color:#6ee7b7;">🍃 Неделя разгрузки завершена!</div>
+            <div style="font-size:0.72rem; color:var(--text2);">Готов к новому циклу с повышенными весами?</div>
+          </div>
+          <button class="btn-primary" style="padding:6px 12px; font-size:0.75rem; background:#10b981;" onclick="startNextMesocycle()">
+            🚀 Начать Цикл ${cycleNum + 1} (+2.5кг)
+          </button>
+        </div>
+      ` : ''}
     </div>
 
     <!-- Volume Distribution -->
