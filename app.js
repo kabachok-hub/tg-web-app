@@ -2064,11 +2064,11 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
   };
 
   if (splitType === 'recovery_3d') {
-    splitName = 'Full Body SBD: Жим + Присед + Тяга + Подсобка (3 дня)';
+    splitName = 'Full Body SBD: Научный сплит 3D (PubMed)';
     daysLayout = [
-      { day_number: 1, title: 'День 1: Тяжёлый Жим + Присед (техника) + Верхний блок + Скручивания', day_of_week: 'Понедельник', focus: 'Heavy Bench Focus & Technique Squat', exercises: [createEx('bench_press', 3, '6', 7.0), createEx('squat', 3, '5', 7.0), createEx('lat_pulldown', 3, '10-12', 7.0), createEx('crunches', 1, '50', 7.0)] },
-      { day_number: 2, title: 'День 2: Становая тяга + Жим скоростной + Нижний блок + Подъём ног + Гиперэкстензия', day_of_week: 'Среда', focus: 'Heavy Deadlift & Speed Bench & Core', exercises: [createEx('deadlift', 3, '5', 7.0), createEx('bench_press', 3, '5', 6.5), createEx('seated_cable_row', 3, '10-12', 7.0), createEx('hanging_leg_raises', 2, '12-15', 7.0), createEx('hyperextension', 2, '15', 7.0)] },
-      { day_number: 3, title: 'День 3: Приседания + Жим объёмный + Турник + Бицепс + Скручивания', day_of_week: 'Пятница', focus: 'Heavy Squat & Upper Volume & Biceps', exercises: [createEx('squat', 3, '5-6', 7.0), createEx('bench_press', 3, '6', 7.0), createEx('pullups', 3, '8-10', 7.5), createEx('barbell_biceps_curl', 3, '10-12', 7.5), createEx('crunches', 1, '50', 7.0)] }
+      { day_number: 1, title: 'Понедельник • Жим лёжа (Тяжёлый) + Присед', day_of_week: 'Понедельник', focus: 'Heavy Bench Strength & Squat Base', exercises: [createEx('bench_press', 3, '6', 7.0), createEx('squat', 3, '5-6', 7.0), createEx('lat_pulldown', 3, '10-12', 7.0), createEx('crunches', 1, '50', 7.0)] },
+      { day_number: 2, title: 'Среда • Становая тяга + Спина + Кор', day_of_week: 'Среда', focus: 'Deadlift Power & Spine Recovery', exercises: [createEx('deadlift', 3, '5', 7.0), createEx('seated_cable_row', 3, '10-12', 7.0), createEx('hanging_leg_raises', 2, '12-15', 7.0), createEx('hyperextension', 2, '15', 7.0)] },
+      { day_number: 3, title: 'Пятница • Жим лёжа (Объёмный) + Турник + Ноги', day_of_week: 'Пятница', focus: 'Volume Bench & Quads & Arms', exercises: [createEx('bench_press', 3, '6', 7.0), createEx('pullups', 3, '8-10', 7.5), createEx('barbell_biceps_curl', 3, '10-12', 7.5), createEx('leg_extension', 2, '12-15', 7.0), createEx('crunches', 1, '50', 7.0)] }
     ];
   } else if (splitType === 'sbd_3d') {
     splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
@@ -2337,7 +2337,7 @@ function renderActiveProgramHTML() {
     <div class="day-chips-scroll">
       ${p.days.map((d, i) => `
         <button class="day-chip ${i===selectedProgramDay?'active':''}" onclick="selectProgramDay(${i})">
-          ${d.day_of_week ? d.day_of_week.slice(0,2) : `Д${i+1}`}: ${d.title.split(':')[1] || d.title}
+          ${d.day_of_week || `День ${i+1}`}
         </button>
       `).join('')}
     </div>
