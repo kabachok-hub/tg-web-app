@@ -1672,7 +1672,9 @@ const EXERCISE_CATALOG = {
   skull_crushers: { key: 'skull_crushers', name: 'Французский жим лежа', muscle: 'Трицепс (длинная головка)', category: 'arms', type: 'isolation', equipment: 'barbell', sets: 3, reps: '8-12', rpe: 8.0, rest: 90, tip: 'Отвод плеча назад усиливает натяжение длинной головки трицепса (Maeo 2022).' },
   tricep_rope_pushdown: { key: 'tricep_rope_pushdown', name: 'Разгибания на трицепс на блоке', muscle: 'Трицепс (латеральная головка)', category: 'arms', type: 'isolation', equipment: 'cables', sets: 3, reps: '10-12', rpe: 8.5, rest: 75, tip: 'Разведение канатов внизу обеспечивает максимальное пиковое сокращение.' },
   
-  hanging_leg_raises: { key: 'hanging_leg_raises', name: 'Подъемы ног в висе на турнике', muscle: 'Пресс / Кор', category: 'core', type: 'isolation', equipment: 'bodyweight', sets: 3, reps: '12-15', rpe: 8.0, rest: 75, tip: 'Подкручивание таза к ребрам обязательно для сокращения прямой мышцы живота (Escamilla 2006).' },
+  hanging_leg_raises: { key: 'hanging_leg_raises', name: 'Подъемы ног в висе на турнике', muscle: 'Пресс / Кор', category: 'core', type: 'isolation', equipment: 'bodyweight', sets: 2, reps: '12-15', rpe: 7.5, rest: 75, tip: 'Декомпрессия позвоночника и сокращение нижней порции прямой мышцы живота.' },
+  crunches: { key: 'crunches', name: 'Скручивания на пресс', muscle: 'Пресс / Кор', category: 'core', type: 'isolation', equipment: 'bodyweight', sets: 1, reps: '50', rpe: 7.0, rest: 60, tip: '1 подход на 50 повторений в конце тренировки для выносливости и тонуса кора.' },
+  hyperextension: { key: 'hyperextension', name: 'Гиперэкстензия (горизонтальная / 45°)', muscle: 'Поясница / Разгибатели', category: 'back', type: 'isolation', equipment: 'bodyweight', sets: 2, reps: '15', rpe: 7.0, rest: 75, tip: 'Закачка крови и синовиальной жидкости в поясничный отдел без осевого отягощения.' },
   cable_woodchopper: { key: 'cable_woodchopper', name: 'Скручивания на блоке (Молитва)', muscle: 'Пресс', category: 'core', type: 'isolation', equipment: 'cables', sets: 3, reps: '12-15', rpe: 8.0, rest: 60, tip: 'Прогрессивная перегрузка весом для гипертрофии кубиков пресса.' }
 };
 
@@ -2029,15 +2031,16 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
     else if (key === 'squat') workW = round25(squat * factor);
     else if (key === 'deadlift') workW = round25(dead * (goal === 'strength' ? 0.82 : 0.775));
     else if (key === 'overhead_press') workW = round25(bench * 0.58);
-    else if (key === 'barbell_row') workW = round25(bench * 0.70);
-    else if (key === 'incline_dumbbell_press') workW = Math.max(10.0, Math.round(((bench * 0.50) / 2) / 2.0) * 2.0);
+    else if (key === 'barbell_row') workW = round25(bench * 0.65);
+    else if (key === 'incline_dumbbell_press') workW = 14.0;
     else if (key === 'romanian_deadlift') workW = round25(dead * 0.65);
     else if (key === 'leg_press') workW = Math.round(squat * 1.25 / 5.0) * 5.0;
-    else if (key === 'lat_pulldown') workW = 42.5;
-    else if (key === 'seated_cable_row') workW = 45.0;
+    else if (key === 'lat_pulldown') workW = 37.5;
+    else if (key === 'seated_cable_row') workW = 30.0;
     else if (key === 'lateral_raises') workW = 8.0;
-    else if (key === 'barbell_biceps_curl') workW = Math.max(15.0, round25(bench * 0.38));
-    else if (key === 'tricep_rope_pushdown' || key === 'skull_crushers') workW = Math.max(15.0, round25(bench * 0.35));
+    else if (key === 'barbell_biceps_curl') workW = 10.0;
+    else if (key === 'tricep_rope_pushdown' || key === 'skull_crushers') workW = 20.0;
+    else if (key === 'leg_curl' || key === 'leg_extension') workW = 27.5;
 
     if (goal === 'strength' && (reps === '6-8' || reps === '5-6')) reps = '3-5';
 
@@ -2061,11 +2064,11 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
   };
 
   if (splitType === 'recovery_3d') {
-    splitName = 'Anti-Overtraining Split: Верх / Низ / Тяга+Плечи (3 дня)';
+    splitName = 'Full Body SBD: Жим + Присед + Тяга + Подсобка (3 дня)';
     daysLayout = [
-      { day_number: 1, title: 'День 1: Верх (Грудь + Спина + Плечи + Трицепс)', day_of_week: 'Понедельник', focus: 'Upper Body / 0% осевой нагрузки на позвоночник', exercises: [createEx('bench_press', 3, '6-8', 7.5), createEx('barbell_row', 3, '8-10', 7.5), createEx('incline_dumbbell_press', 3, '8-10', 8.0), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('lateral_raises', 3, '12-15', 8.5), createEx('tricep_rope_pushdown', 2, '10-12', 8.5)] },
-      { day_number: 2, title: 'День 2: Низ (Присед + Квадрицепс + Бицепс бедра + Пресс)', day_of_week: 'Среда', focus: 'Lower Squat & Quads / Верх полностью отдыхает', exercises: [createEx('squat', 3, '5-6', 7.5), createEx('leg_press', 3, '8-10', 8.0), createEx('leg_curl', 3, '10-12', 8.0), createEx('calf_raises', 3, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
-      { day_number: 3, title: 'День 3: Силовая тяга + Плечи + Бицепс', day_of_week: 'Пятница', focus: 'Deadlift & Shoulders / Задняя цепь и плечи', exercises: [createEx('deadlift', 3, '4-5', 7.5), createEx('overhead_press', 3, '6-8', 7.5), createEx('seated_cable_row', 3, '10-12', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-12', 8.5)] }
+      { day_number: 1, title: 'День 1: Тяжёлый Жим + Присед (техника) + Верхний блок + Скручивания', day_of_week: 'Понедельник', focus: 'Heavy Bench Focus & Technique Squat', exercises: [createEx('bench_press', 3, '6', 7.0), createEx('squat', 3, '5', 7.0), createEx('lat_pulldown', 3, '10-12', 7.0), createEx('crunches', 1, '50', 7.0)] },
+      { day_number: 2, title: 'День 2: Становая тяга + Жим скоростной + Нижний блок + Подъём ног + Гиперэкстензия', day_of_week: 'Среда', focus: 'Heavy Deadlift & Speed Bench & Core', exercises: [createEx('deadlift', 3, '5', 7.0), createEx('bench_press', 3, '5', 6.5), createEx('seated_cable_row', 3, '10-12', 7.0), createEx('hanging_leg_raises', 2, '12-15', 7.0), createEx('hyperextension', 2, '15', 7.0)] },
+      { day_number: 3, title: 'День 3: Приседания + Жим объёмный + Турник + Бицепс + Скручивания', day_of_week: 'Пятница', focus: 'Heavy Squat & Upper Volume & Biceps', exercises: [createEx('squat', 3, '5-6', 7.0), createEx('bench_press', 3, '6', 7.0), createEx('pullups', 3, '8-10', 7.5), createEx('barbell_biceps_curl', 3, '10-12', 7.5), createEx('crunches', 1, '50', 7.0)] }
     ];
   } else if (splitType === 'sbd_3d') {
     splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
