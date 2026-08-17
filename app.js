@@ -2074,11 +2074,11 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
   };
 
   if (splitType === 'recovery_3d') {
-    splitName = 'Full Body SBD: Научный сплит 3D (PubMed)';
+    splitName = 'Full Body SBD: Heavy-Light Троеборье (3 дня)';
     daysLayout = [
-      { day_number: 1, title: 'Понедельник • Жим лёжа (Тяжёлый) + Спина', day_of_week: 'Понедельник', focus: 'Heavy Bench Strength & Upper Pull', exercises: [createEx('bench_press', 3, '6', 7.0), createEx('lat_pulldown', 3, '10-12', 7.0), createEx('crunches', 1, '50', 7.0)] },
-      { day_number: 2, title: 'Среда • Становая тяга + Спина + Поясница', day_of_week: 'Среда', focus: 'Deadlift Power & Spine Health', exercises: [createEx('deadlift', 3, '5', 7.0), createEx('seated_cable_row', 3, '10-12', 7.0), createEx('hyperextension', 2, '15', 7.0)] },
-      { day_number: 3, title: 'Пятница • Приседания (База) + Жим лёжа', day_of_week: 'Пятница', focus: 'Heavy Squat Strength & Volume Bench', exercises: [createEx('squat', 3, '6', 7.0), (function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 45.0; e.working_weight = 45.0; e.warmup_ladder = getWarmupLadder('bench_press', 45.0); return e; })(), createEx('pullups', 3, '8-10', 7.5), createEx('barbell_biceps_curl', 3, '10-12', 7.5), createEx('crunches', 1, '50', 7.0)] }
+      { day_number: 1, title: 'Понедельник • Присед (База) + Жим лёжа (База)', day_of_week: 'Понедельник', focus: 'Heavy Squat & Heavy Bench (После выходных)', exercises: [createEx('squat', 3, '6', 7.0), createEx('bench_press', 3, '6', 7.0), createEx('hyperextension', 2, '15', 7.0), createEx('crunches', 1, '50', 7.0)] },
+      { day_number: 2, title: 'Среда • Становая тяга + Спина + Поясница', day_of_week: 'Среда', focus: 'Deadlift Power & Upper Back', exercises: [createEx('deadlift', 3, '5', 7.0), createEx('lat_pulldown', 3, '10-12', 7.0), createEx('hyperextension', 2, '15', 7.0)] },
+      { day_number: 3, title: 'Пятница • Жим лёжа (Лёгкий/Объём) + Турник + Руки', day_of_week: 'Пятница', focus: 'Light Volume Bench & Pullups & Arms (Перед выходными)', exercises: [(function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 45.0; e.working_weight = 45.0; e.warmup_ladder = getWarmupLadder('bench_press', 45.0); return e; })(), createEx('pullups', 3, '8-10', 7.5), createEx('barbell_biceps_curl', 3, '10-12', 7.5), createEx('crunches', 1, '50', 7.0)] }
     ];
   } else if (splitType === 'sbd_3d') {
     splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
@@ -2208,12 +2208,12 @@ function setProgramWeek(weekNum) {
   const upperProg = (cycleCount - 1) * 2.5;
   const lowerProg = (cycleCount - 1) * 5.0;
 
-  // Exact target weights for SBD in recovery_3d:
+  // Exact target weights for SBD in recovery_3d (Heavy Monday / Pull Wed / Light Fri):
   const sbdSchedule = {
+    squat_mon: [55.0 + lowerProg, 65.0 + lowerProg, 72.5 + lowerProg, 77.5 + lowerProg, 82.5 + lowerProg, Math.round((50.0 + lowerProg * 0.6)/2.5)*2.5],
     bench_mon: [50.0 + upperProg, 52.5 + upperProg, 55.0 + upperProg, 57.5 + upperProg, 62.5 + upperProg, Math.round((37.5 + upperProg * 0.6)/2.5)*2.5],
     dead_wed:  [70.0 + lowerProg, 77.5 + lowerProg, 82.5 + lowerProg, 85.0 + lowerProg, 90.0 + lowerProg, Math.round((55.0 + lowerProg * 0.6)/2.5)*2.5],
-    squat_fri: [55.0 + lowerProg, 65.0 + lowerProg, 72.5 + lowerProg, 77.5 + lowerProg, 82.5 + lowerProg, Math.round((50.0 + lowerProg * 0.6)/2.5)*2.5],
-    bench_fri: [45.0 + upperProg, 47.5 + upperProg, 50.0 + upperProg, 52.5 + upperProg, 50.0 + upperProg, Math.round((35.0 + upperProg * 0.6)/2.5)*2.5]
+    bench_fri: [45.0 + upperProg, 47.5 + upperProg, 50.0 + upperProg, 52.5 + upperProg, 45.0 + upperProg, Math.round((35.0 + upperProg * 0.6)/2.5)*2.5]
   };
 
   DB.program.days.forEach((day, dayIdx) => {
@@ -2222,14 +2222,14 @@ function setProgramWeek(weekNum) {
       if (!ex.base_weight && ex.working_weight) ex.base_weight = ex.working_weight;
 
       if (DB.program.split_type === 'recovery_3d') {
-        if (ex.key === 'bench_press' && dayIdx === 0) {
+        if (ex.key === 'squat' && dayIdx === 0) {
+          ex.working_weight = sbdSchedule.squat_mon[weekNum - 1];
+        } else if (ex.key === 'bench_press' && dayIdx === 0) {
           ex.working_weight = sbdSchedule.bench_mon[weekNum - 1];
-        } else if (ex.key === 'bench_press' && dayIdx === 2) {
-          ex.working_weight = sbdSchedule.bench_fri[weekNum - 1];
-        } else if (ex.key === 'squat' && dayIdx === 2) {
-          ex.working_weight = sbdSchedule.squat_fri[weekNum - 1];
         } else if (ex.key === 'deadlift' && dayIdx === 1) {
           ex.working_weight = sbdSchedule.dead_wed[weekNum - 1];
+        } else if (ex.key === 'bench_press' && dayIdx === 2) {
+          ex.working_weight = sbdSchedule.bench_fri[weekNum - 1];
         } else {
           if (weekNum === 6) {
             ex.working_weight = ex.base_weight > 0 ? Math.max(10.0, Math.round((ex.base_weight * 0.75) / 2.5) * 2.5) : 0.0;
