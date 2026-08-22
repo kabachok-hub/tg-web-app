@@ -571,7 +571,7 @@ async function saveWorkout() {
     }
   }
 
-  // PR Detection Check
+  // PR Detection Check (Fixed on Next Cycle to protect Week 6 Deload)
   let newPrFound = null;
   workout.sets.forEach(s => {
     const w = parseFloat(s.weight) || 0;
@@ -583,13 +583,31 @@ async function saveWorkout() {
       if (e > currentPr) {
         DB.profile.records[s.exercise] = e;
         newPrFound = { exercise: s.exercise, e1rm: e, weight: w, reps: r };
+
+        if (!DB.user) DB.user = {};
+        if (!DB.user.one_rm) DB.user.one_rm = {};
+        if (DB.program) {
+          if (!DB.program.pending_new_1rm) DB.program.pending_new_1rm = {};
+        }
+
+        const exLow = s.exercise.toLowerCase();
+        if (exLow.includes('жим') && !exLow.includes('ногами')) {
+          DB.user.one_rm.bench_press = e;
+          if (DB.program) DB.program.pending_new_1rm.bench_press = e;
+        } else if (exLow.includes('присед')) {
+          DB.user.one_rm.squat = e;
+          if (DB.program) DB.program.pending_new_1rm.squat = e;
+        } else if (exLow.includes('тяга') || exLow.includes('становая')) {
+          DB.user.one_rm.deadlift = e;
+          if (DB.program) DB.program.pending_new_1rm.deadlift = e;
+        }
       }
     }
   });
 
   await saveData();
   if (newPrFound) {
-    showToast(`🏆 Новый рекорд в ${newPrFound.exercise}: ${newPrFound.weight}кг × ${newPrFound.reps} (1ПМ ${newPrFound.e1rm}кг)!`);
+    showToast(`🏆 Новый рекорд в ${newPrFound.exercise}: ${newPrFound.weight}кг × ${newPrFound.reps} (1ПМ ${newPrFound.e1rm}кг)! Зафиксирован на новый цикл!`);
   } else {
     showToast('✅ Тренировка сохранена!');
   }
@@ -2074,11 +2092,11 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
   };
 
   if (splitType === 'recovery_3d') {
-    splitName = 'Full Body SBD: Heavy-Light Троеборье (3 дня)';
+    splitName = 'SBD Троеборье: 2 Жима в неделю + Присед + Тяга (PubMed 2x)';
     daysLayout = [
-      { day_number: 1, title: 'Понедельник • Присед (База) + Жим лёжа (База)', day_of_week: 'Понедельник', focus: 'Heavy Squat & Heavy Bench (После выходных)', exercises: [createEx('squat', 3, '6', 7.0), createEx('bench_press', 3, '6', 7.0), createEx('hyperextension', 2, '15', 7.0), createEx('crunches', 1, '50', 7.0)] },
-      { day_number: 2, title: 'Среда • Становая тяга + Спина + Поясница', day_of_week: 'Среда', focus: 'Deadlift Power & Upper Back', exercises: [createEx('deadlift', 3, '5', 7.0), createEx('lat_pulldown', 3, '10-12', 7.0), createEx('hyperextension', 2, '15', 7.0)] },
-      { day_number: 3, title: 'Пятница • Жим лёжа (Лёгкий/Объём) + Турник + Руки', day_of_week: 'Пятница', focus: 'Light Volume Bench & Pullups & Arms (Перед выходными)', exercises: [(function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 45.0; e.working_weight = 45.0; e.warmup_ladder = getWarmupLadder('bench_press', 45.0); return e; })(), createEx('pullups', 3, '8-10', 7.5), createEx('barbell_biceps_curl', 3, '10-12', 7.5), createEx('crunches', 1, '50', 7.0)] }
+      { day_number: 1, title: 'Понедельник • Жим штанги лёжа (Тяжёлый / Силовой)', day_of_week: 'Понедельник', focus: 'Heavy Bench Press Power', exercises: [createEx('bench_press', 3, '6', 7.0)] },
+      { day_number: 2, title: 'Среда • Приседания со штангой (База)', day_of_week: 'Среда', focus: 'Heavy Squat Strength', exercises: [createEx('squat', 3, '6', 7.0)] },
+      { day_number: 3, title: 'Пятница • Становая тяга + Жим (Объёмный / Техника)', day_of_week: 'Пятница', focus: 'Deadlift Power & Volume Bench (Частота 2x PubMed)', exercises: [createEx('deadlift', 3, '5', 7.0), (function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5); return e; })()] }
     ];
   } else if (splitType === 'sbd_3d') {
     splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
@@ -2161,14 +2179,14 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
     });
   });
 
-  // 6-Week Wave Matrix
+  // 6-Week Undulating Wave Matrix (Волновая периодизация Шейко/DUP)
   const matrixWeeks = [
-    { week: 1, phase: 'Вкатывание', pct: 75, rpe: 7.0, desc: 'Адаптация связок, техника' },
-    { week: 2, phase: 'Накопление', pct: 80, rpe: 7.5, desc: 'Рост тоннажа и выносливости' },
-    { week: 3, phase: 'Интенсификация', pct: 85, rpe: 8.0, desc: 'Повышение рабочих весов' },
-    { week: 4, phase: 'Пик объема', pct: 88, rpe: 8.5, desc: 'Пиковый стимул гипертрофии' },
-    { week: 5, phase: 'Рекорды (PR)', pct: 93, rpe: 9.0, desc: 'Установка личных рекордов' },
-    { week: 6, phase: 'Deload (Разгрузка)', pct: 55, rpe: 5.0, desc: 'Сброс утомления ЦНС' }
+    { week: 1, phase: 'Старт волны 1 (72.5%)', pct: 72.5, rpe: 7.0, desc: 'Вкатывание, адаптация связок' },
+    { week: 2, phase: 'Гребень волны 1 (80%)', pct: 80.0, rpe: 8.0, desc: 'Силовой подъем, адаптация ЦНС' },
+    { week: 3, phase: 'Волновой сброс (75%) 📉', pct: 75.0, rpe: 7.5, desc: 'Снижение веса для суперкомпенсации' },
+    { week: 4, phase: 'Разгон волны 2 (85%) 🚀', pct: 85.0, rpe: 8.5, desc: 'Выход на околопредельную мощность' },
+    { week: 5, phase: 'ПИК ВОЛНЫ (90%) 🔥', pct: 90.0, rpe: 9.0, desc: 'Установка новых личных рекордов' },
+    { week: 6, phase: 'Deload (Разгрузка 55%) 🍃', pct: 55.0, rpe: 5.0, desc: 'Сброс утомления ЦНС и отдых' }
   ];
 
   const waveMatrix = matrixWeeks.map(w => {
@@ -2194,7 +2212,8 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
     current_week: 1,
     weekly_volume_sets: weeklyVol,
     days: daysLayout,
-    wave_matrix: waveMatrix
+    wave_matrix: waveMatrix,
+    user1rm: user1rm || { bench_press: 68.0, squat: 90.0, deadlift: 100.0 }
   };
 }
 
@@ -2208,12 +2227,48 @@ function setProgramWeek(weekNum) {
   const upperProg = (cycleCount - 1) * 2.5;
   const lowerProg = (cycleCount - 1) * 5.0;
 
-  // Exact target weights for SBD in recovery_3d (Heavy Monday / Pull Wed / Light Fri):
+  const user1rm = (DB.program && DB.program.user1rm) ? DB.program.user1rm : (DB.user && DB.user.one_rm ? DB.user.one_rm : {});
+  const bench1rm = parseFloat(user1rm.bench_press) || 68.0;
+  const squat1rm = parseFloat(user1rm.squat) || 90.0;
+  const dead1rm  = parseFloat(user1rm.deadlift) || 100.0;
+  const round25 = w => Math.max(10.0, Math.round(w / 2.5) * 2.5);
+
+  // Dynamic True Wave SBD Schedule computed from athlete's 1RM:
+  // Wave 1: W1=72.5% -> W2=80% -> W3=75% (Drop)
+  // Wave 2: W4=85% -> W5=90-92% (PR) -> W6=55% (Deload)
   const sbdSchedule = {
-    squat_mon: [55.0 + lowerProg, 65.0 + lowerProg, 72.5 + lowerProg, 77.5 + lowerProg, 82.5 + lowerProg, Math.round((50.0 + lowerProg * 0.6)/2.5)*2.5],
-    bench_mon: [50.0 + upperProg, 52.5 + upperProg, 55.0 + upperProg, 57.5 + upperProg, 62.5 + upperProg, Math.round((37.5 + upperProg * 0.6)/2.5)*2.5],
-    dead_wed:  [70.0 + lowerProg, 77.5 + lowerProg, 82.5 + lowerProg, 85.0 + lowerProg, 90.0 + lowerProg, Math.round((55.0 + lowerProg * 0.6)/2.5)*2.5],
-    bench_fri: [45.0 + upperProg, 47.5 + upperProg, 50.0 + upperProg, 52.5 + upperProg, 45.0 + upperProg, Math.round((35.0 + upperProg * 0.6)/2.5)*2.5]
+    bench_mon: [
+      round25(bench1rm * 0.735) + upperProg,
+      round25(bench1rm * 0.809) + upperProg,
+      round25(bench1rm * 0.772) + upperProg,
+      round25(bench1rm * 0.846) + upperProg,
+      round25(bench1rm * 0.919) + upperProg,
+      round25(bench1rm * 0.551)
+    ],
+    squat_wed: [
+      round25(squat1rm * 0.611) + lowerProg,
+      round25(squat1rm * 0.806) + lowerProg,
+      round25(squat1rm * 0.722) + lowerProg,
+      round25(squat1rm * 0.861) + lowerProg,
+      round25(squat1rm * 0.917) + lowerProg,
+      round25(squat1rm * 0.556)
+    ],
+    dead_fri: [
+      round25(dead1rm * 0.700) + lowerProg,
+      round25(dead1rm * 0.800) + lowerProg,
+      round25(dead1rm * 0.750) + lowerProg,
+      round25(dead1rm * 0.850) + lowerProg,
+      round25(dead1rm * 0.900) + lowerProg,
+      round25(dead1rm * 0.550)
+    ],
+    bench_fri: [
+      round25(bench1rm * 0.625) + upperProg,
+      round25(bench1rm * 0.662) + upperProg,
+      round25(bench1rm * 0.662) + upperProg,
+      round25(bench1rm * 0.699) + upperProg,
+      round25(bench1rm * 0.662) + upperProg,
+      round25(bench1rm * 0.441)
+    ]
   };
 
   DB.program.days.forEach((day, dayIdx) => {
@@ -2222,12 +2277,12 @@ function setProgramWeek(weekNum) {
       if (!ex.base_weight && ex.working_weight) ex.base_weight = ex.working_weight;
 
       if (DB.program.split_type === 'recovery_3d') {
-        if (ex.key === 'squat' && dayIdx === 0) {
-          ex.working_weight = sbdSchedule.squat_mon[weekNum - 1];
-        } else if (ex.key === 'bench_press' && dayIdx === 0) {
+        if (ex.key === 'bench_press' && dayIdx === 0) {
           ex.working_weight = sbdSchedule.bench_mon[weekNum - 1];
-        } else if (ex.key === 'deadlift' && dayIdx === 1) {
-          ex.working_weight = sbdSchedule.dead_wed[weekNum - 1];
+        } else if (ex.key === 'squat' && dayIdx === 1) {
+          ex.working_weight = sbdSchedule.squat_wed[weekNum - 1];
+        } else if (ex.key === 'deadlift' && dayIdx === 2) {
+          ex.working_weight = sbdSchedule.dead_fri[weekNum - 1];
         } else if (ex.key === 'bench_press' && dayIdx === 2) {
           ex.working_weight = sbdSchedule.bench_fri[weekNum - 1];
         } else {
@@ -2248,19 +2303,19 @@ function setProgramWeek(weekNum) {
       const isMainBase = (idx === 0 || ex.key === 'bench_press' || ex.key === 'squat' || ex.key === 'deadlift');
       ex.warmup_ladder = (isMainBase && ex.working_weight > 0) ? getWarmupLadder(ex.key || 'bench_press', ex.working_weight) : [];
 
-      // Reps & Sets scaling
+      // Reps & Sets scaling for True Wave
       const isBaseLift = (ex.key === 'squat' || ex.key === 'bench_press' || ex.key === 'deadlift');
       if (weekNum === 1) {
         ex.sets = ex.base_sets;
-        ex.reps = isBaseLift ? '6' : (ex.category === 'compound' ? '8-10' : (ex.key === 'crunches' ? '50' : '10-12'));
+        ex.reps = isBaseLift ? (ex.key === 'deadlift' ? '5' : '6') : (ex.category === 'compound' ? '8-10' : (ex.key === 'crunches' ? '50' : '10-12'));
       } else if (weekNum === 2) {
         ex.sets = ex.base_sets;
-        ex.reps = isBaseLift ? '5' : (ex.category === 'compound' ? '8-10' : (ex.key === 'crunches' ? '50' : '10-12'));
+        ex.reps = isBaseLift ? '4' : (ex.category === 'compound' ? '8-10' : (ex.key === 'crunches' ? '50' : '10-12'));
       } else if (weekNum === 3) {
         ex.sets = ex.base_sets;
-        ex.reps = isBaseLift ? '4' : (ex.category === 'compound' ? '6-8' : (ex.key === 'crunches' ? '50' : '10-12'));
+        ex.reps = isBaseLift ? '4' : (ex.category === 'compound' ? '8-10' : (ex.key === 'crunches' ? '50' : '10-12'));
       } else if (weekNum === 4) {
-        ex.sets = isBaseLift ? Math.min(4, ex.base_sets + 1) : Math.max(2, ex.base_sets - 1);
+        ex.sets = isBaseLift ? 3 : Math.max(2, ex.base_sets - 1);
         ex.reps = isBaseLift ? '3-4' : (ex.category === 'compound' ? '6-8' : (ex.key === 'crunches' ? '50' : '10'));
       } else if (weekNum === 5) {
         ex.sets = isBaseLift ? 2 : Math.max(1, ex.base_sets - 1);
@@ -2285,11 +2340,27 @@ function setProgramWeek(weekNum) {
 
 function startNextMesocycle() {
   if (!hasValidProgram(DB.program)) return;
+  
+  // Apply any pending PR records achieved during the cycle
+  if (DB.program.pending_new_1rm) {
+    if (!DB.program.user1rm) DB.program.user1rm = {};
+    if (DB.program.pending_new_1rm.bench_press) {
+      DB.program.user1rm.bench_press = Math.max(DB.program.user1rm.bench_press || 68.0, DB.program.pending_new_1rm.bench_press);
+    }
+    if (DB.program.pending_new_1rm.squat) {
+      DB.program.user1rm.squat = Math.max(DB.program.user1rm.squat || 90.0, DB.program.pending_new_1rm.squat);
+    }
+    if (DB.program.pending_new_1rm.deadlift) {
+      DB.program.user1rm.deadlift = Math.max(DB.program.user1rm.deadlift || 100.0, DB.program.pending_new_1rm.deadlift);
+    }
+    DB.program.pending_new_1rm = null;
+  }
+
   DB.program.cycle_count = (DB.program.cycle_count || 1) + 1;
   DB.program.current_week = 1;
   setProgramWeek(1);
   saveData();
-  showToast(`🚀 Запущен Цикл ${DB.program.cycle_count}! Базовые веса повышены (+2.5 кг жим, +5 кг присед/тяга)!`);
+  showToast(`🚀 Запущен Цикл ${DB.program.cycle_count}! Новые рабочие веса вступили в силу с Недели 1!`);
   renderProgramTab();
   renderDashboard();
 }
@@ -2340,6 +2411,17 @@ function renderActiveProgramHTML() {
         </div>
       ` : ''}
       
+      <!-- Active 1RMs & Auto-recalculator -->
+      <div style="margin-top:12px; padding:10px 12px; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="font-size:0.75rem; color:var(--text2);">
+          <span>⚖️ <strong>Базовые 1ПМ:</strong></span>
+          <span style="color:var(--text); font-weight:700; margin-left:4px;">Жим ${(p.user1rm ? p.user1rm.bench_press : 68)}кг · Присед ${(p.user1rm ? p.user1rm.squat : 90)}кг · Тяга ${(p.user1rm ? p.user1rm.deadlift : 100)}кг</span>
+        </div>
+        <button class="chip" style="padding:3px 10px; font-size:0.72rem; background:rgba(124,92,255,0.2); border:1px solid rgba(124,92,255,0.4); color:#c4b5fd; cursor:pointer;" onclick="promptUpdate1RM()">
+          ⚡ Пересчитать веса
+        </button>
+      </div>
+
       <!-- Week Stepper Chips -->
       <div style="margin-top:12px;">
         <div style="font-size:0.75rem; color:var(--text2); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
@@ -2509,6 +2591,44 @@ function selectProgramDay(idx) {
 function toggleWarmup(id) {
   const el = $(id);
   if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+function promptUpdate1RM() {
+  const p = DB.program || {};
+  const u1 = p.user1rm || (DB.user && DB.user.one_rm) || {};
+  const curB = u1.bench_press || 68.0;
+  const curS = u1.squat || 90.0;
+  const curD = u1.deadlift || 100.0;
+
+  const newB = prompt('💪 Введи 1ПМ в жиме лёжа (кг):', curB);
+  if (newB === null) return;
+  const newS = prompt('🦵 Введи 1ПМ в приседаниях (кг):', curS);
+  if (newS === null) return;
+  const newD = prompt('🔗 Введи 1ПМ в становой тяге (кг):', curD);
+  if (newD === null) return;
+
+  const bVal = parseFloat(newB) || curB;
+  const sVal = parseFloat(newS) || curS;
+  const dVal = parseFloat(newD) || curD;
+
+  if (!DB.user) DB.user = {};
+  if (!DB.user.one_rm) DB.user.one_rm = {};
+  if (!DB.program) DB.program = {};
+  if (!DB.program.user1rm) DB.program.user1rm = {};
+
+  DB.user.one_rm.bench_press = bVal;
+  DB.user.one_rm.squat = sVal;
+  DB.user.one_rm.deadlift = dVal;
+
+  DB.program.user1rm.bench_press = bVal;
+  DB.program.user1rm.squat = sVal;
+  DB.program.user1rm.deadlift = dVal;
+
+  setProgramWeek(DB.program.current_week || 1);
+  saveData();
+  showToast(`⚡ Программа пересчитана под 1ПМ: Жим ${bVal}кг, Присед ${sVal}кг, Тяга ${dVal}кг!`);
+  renderProgramTab();
+  renderDashboard();
 }
 
 // ═══════════════════════ GEMINI AI COACH ═══════════════════════
