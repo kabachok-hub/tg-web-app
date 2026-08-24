@@ -1794,6 +1794,7 @@ def handle_main_menu(message):
                 diff = ex_data['diff']
                 color = "🟢" if diff == "Легко" else "🟡" if diff == "Средне" else "🔴"
                 session_tonnage = sum(float(s.get('weight',0)) * float(s.get('reps',0)) for s in ex_data['sets'])
+                ex_safe = escape_md(ex)
                 tonnage_str = f" _(Тоннаж: {session_tonnage:.0f} кг)_" if session_tonnage > 0 else ""
                 graph_text += f"🏋️ *{ex_safe}*{tonnage_str}\n"
                 for s in ex_data['sets']:
