@@ -1752,34 +1752,131 @@ const EXERCISE_CATALOG = {
   cable_woodchopper: { key: 'cable_woodchopper', name: 'Скручивания на блоке (Молитва)', muscle: 'Пресс', category: 'core', type: 'isolation', equipment: 'cables', sets: 3, reps: '12-15', rpe: 8.0, rest: 60, tip: 'Прогрессивная перегрузка весом для гипертрофии кубиков пресса.' }
 };
 
-function getWarmupLadder(exKey, workingWeight) {
-  const ex = EXERCISE_CATALOG[exKey] || {};
-  const eq = ex.equipment || 'barbell';
+function getWarmupLadder(exKey, workingWeight, dayIdx, weekNum) {
   const ladder = [];
-  const round25 = w => Math.round(w / 2.5) * 2.5;
+  const round25 = w => Math.max(10.0, Math.round(w / 2.5) * 2.5);
 
-  if (eq === 'barbell') {
-    if (exKey === 'deadlift' || exKey === 'romanian_deadlift') {
-      const startW = workingWeight >= 60 ? 50.0 : Math.max(20.0, round25(workingWeight * 0.50));
-      ladder.push({ step: 1, weight: startW, reps: 5, note: 'Старт, натяг и высота дисков (50%)' });
-      if (workingWeight >= 65) ladder.push({ step: 2, weight: round25(workingWeight * 0.68), reps: 3, note: 'Скорость съема (68%)' });
-      if (workingWeight >= 75) ladder.push({ step: 3, weight: round25(workingWeight * 0.85), reps: 2, note: 'Подводящий мостик (85%)' });
-      if (workingWeight >= 85) ladder.push({ step: 4, weight: round25(workingWeight * 0.92), reps: 1, note: 'Финальный сингл (92%)' });
+  if (exKey === 'bench_press') {
+    if (dayIdx === 0 || dayIdx === undefined) {
+      // Monday Heavy Bench
+      if (weekNum === 1 || (workingWeight >= 47.5 && workingWeight <= 52.5)) {
+        ladder.push({ step: 1, weight: 20.0, reps: 10, note: 'Пустой гриф (29%)' });
+        ladder.push({ step: 2, weight: 30.0, reps: 5, note: 'Включение моторики (44%)' });
+        ladder.push({ step: 3, weight: 40.0, reps: 3, note: 'Взрывной темп (59%)' });
+        ladder.push({ step: 4, weight: 45.0, reps: 1, note: 'Подводящий сингл (66%)' });
+      } else if (weekNum === 2 || (workingWeight > 52.5 && workingWeight <= 56)) {
+        ladder.push({ step: 1, weight: 20.0, reps: 10, note: 'Пустой гриф (29%)' });
+        ladder.push({ step: 2, weight: 32.5, reps: 5, note: 'Включение моторики (48%)' });
+        ladder.push({ step: 3, weight: 42.5, reps: 3, note: 'Взрывной темп (62%)' });
+        ladder.push({ step: 4, weight: 50.0, reps: 1, note: 'Подводка перед рабочим (73%)' });
+      } else if (weekNum === 3 || (workingWeight > 50 && workingWeight <= 53.5)) {
+        ladder.push({ step: 1, weight: 20.0, reps: 10, note: 'Пустой гриф (29%)' });
+        ladder.push({ step: 2, weight: 30.0, reps: 5, note: 'Включение моторики (44%)' });
+        ladder.push({ step: 3, weight: 40.0, reps: 3, note: 'Взрывной темп (59%)' });
+        ladder.push({ step: 4, weight: 47.5, reps: 1, note: 'Подводка перед рабочим (70%)' });
+      } else if (weekNum === 4 || (workingWeight > 56 && workingWeight <= 59)) {
+        ladder.push({ step: 1, weight: 20.0, reps: 10, note: 'Пустой гриф (29%)' });
+        ladder.push({ step: 2, weight: 35.0, reps: 5, note: 'Включение моторики (51%)' });
+        ladder.push({ step: 3, weight: 45.0, reps: 3, note: 'Взрывной темп (66%)' });
+        ladder.push({ step: 4, weight: 52.5, reps: 1, note: 'Подводка (77%)' });
+      } else if (weekNum === 5 || workingWeight >= 60) {
+        ladder.push({ step: 1, weight: 20.0, reps: 10, note: 'Пустой гриф (29%)' });
+        ladder.push({ step: 2, weight: 35.0, reps: 5, note: 'Включение моторики (51%)' });
+        ladder.push({ step: 3, weight: 47.5, reps: 3, note: 'Взрывной темп (70%)' });
+        ladder.push({ step: 4, weight: 55.0, reps: 1, note: 'Подводка (81%)' });
+        ladder.push({ step: 5, weight: round25(workingWeight * 0.96), reps: 1, note: 'Активация ЦНС перед рекордом' });
+      } else if (weekNum === 6 || workingWeight < 40) {
+        ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф (29%)' });
+        ladder.push({ step: 2, weight: 30.0, reps: 4, note: 'Легкий разогрев (44%)' });
+      } else {
+        ladder.push({ step: 1, weight: 20.0, reps: 10, note: 'Пустой гриф' });
+        ladder.push({ step: 2, weight: round25(workingWeight * 0.55), reps: 5, note: 'Моторика' });
+        ladder.push({ step: 3, weight: round25(workingWeight * 0.75), reps: 3, note: 'Темп' });
+        ladder.push({ step: 4, weight: round25(workingWeight * 0.88), reps: 1, note: 'Подводка' });
+      }
     } else {
-      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф, траектория' });
-      if (workingWeight >= 35) ladder.push({ step: 2, weight: round25(workingWeight * 0.50), reps: 5, note: 'Включение моторики (50%)' });
-      if (workingWeight >= 50) ladder.push({ step: 3, weight: round25(workingWeight * 0.70), reps: 3, note: 'Взрывной темп (70%)' });
-      if (workingWeight >= 60) ladder.push({ step: 4, weight: round25(workingWeight * 0.85), reps: 1, note: 'Подводящий сингл перед рабочим (85%)' });
-      if (workingWeight >= 80) ladder.push({ step: 5, weight: round25(workingWeight * 0.92), reps: 1, note: 'Финальная подводка (92%)' });
+      // Friday Volume / Light Bench
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф, суставы (29%)' });
+      if (workingWeight >= 40) {
+        ladder.push({ step: 2, weight: round25(workingWeight * 0.75), reps: 5, note: 'Подводка к объёму' });
+      }
+      if (workingWeight >= 47.5) {
+        ladder.push({ step: 3, weight: round25(workingWeight * 0.88), reps: 2, note: 'Финальный разогрев' });
+      }
     }
-  } else if (eq === 'dumbbell' || eq === 'machine') {
-    if (workingWeight >= 20) {
-      ladder.push({ step: 1, weight: round25(workingWeight * 0.50), reps: 8, note: 'Суставная разминка (50%)' });
-      ladder.push({ step: 2, weight: round25(workingWeight * 0.75), reps: 4, note: 'Подводка (75%)' });
-    } else if (workingWeight > 10) {
-      ladder.push({ step: 1, weight: round25(workingWeight * 0.60), reps: 6, note: 'Разогрев (60%)' });
+  } else if (exKey === 'squat') {
+    if (weekNum === 1 || (workingWeight >= 52.5 && workingWeight <= 57.5)) {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф, глубина (22%)' });
+      ladder.push({ step: 2, weight: 35.0, reps: 5, note: 'Прогрев квадрицепсов (39%)' });
+      ladder.push({ step: 3, weight: 45.0, reps: 3, note: 'Взрывная скорость (50%)' });
+      ladder.push({ step: 4, weight: 50.0, reps: 1, note: 'Подводящий сингл (55%)' });
+    } else if (weekNum === 2 || (workingWeight > 70 && workingWeight <= 75)) {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф (22%)' });
+      ladder.push({ step: 2, weight: 40.0, reps: 5, note: 'Прогрев (44%)' });
+      ladder.push({ step: 3, weight: 55.0, reps: 3, note: 'Скорость (61%)' });
+      ladder.push({ step: 4, weight: 65.0, reps: 1, note: 'Подводка перед рабочим (72%)' });
+    } else if (weekNum === 3 || (workingWeight >= 62.5 && workingWeight <= 67.5)) {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф (22%)' });
+      ladder.push({ step: 2, weight: 37.5, reps: 5, note: 'Прогрев (42%)' });
+      ladder.push({ step: 3, weight: 50.0, reps: 3, note: 'Скорость (55%)' });
+      ladder.push({ step: 4, weight: 57.5, reps: 1, note: 'Подводка (64%)' });
+    } else if (weekNum === 4 || (workingWeight > 75 && workingWeight <= 80)) {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф (22%)' });
+      ladder.push({ step: 2, weight: 42.5, reps: 5, note: 'Прогрев (47%)' });
+      ladder.push({ step: 3, weight: 60.0, reps: 3, note: 'Скорость (67%)' });
+      ladder.push({ step: 4, weight: 70.0, reps: 1, note: 'Подводка (78%)' });
+    } else if (weekNum === 5 || workingWeight > 80) {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф (22%)' });
+      ladder.push({ step: 2, weight: 45.0, reps: 5, note: 'Прогрев (50%)' });
+      ladder.push({ step: 3, weight: 62.5, reps: 3, note: 'Скорость (69%)' });
+      ladder.push({ step: 4, weight: 72.5, reps: 1, note: 'Подводка (80%)' });
+      ladder.push({ step: 5, weight: round25(workingWeight * 0.94), reps: 1, note: 'Активация ЦНС перед рекордом' });
+    } else if (weekNum === 6 || workingWeight <= 50) {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф' });
+      ladder.push({ step: 2, weight: 35.0, reps: 4, note: 'Легкий прогрев' });
+    } else {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф' });
+      ladder.push({ step: 2, weight: round25(workingWeight * 0.50), reps: 5, note: 'Прогрев' });
+      ladder.push({ step: 3, weight: round25(workingWeight * 0.70), reps: 3, note: 'Скорость' });
+      ladder.push({ step: 4, weight: round25(workingWeight * 0.85), reps: 1, note: 'Подводка' });
+    }
+  } else if (exKey === 'deadlift') {
+    if (weekNum === 1 || (workingWeight >= 67.5 && workingWeight <= 72.5)) {
+      ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Старт, натяг и высота дисков (50%)' });
+      ladder.push({ step: 2, weight: 57.5, reps: 3, note: 'Скорость съема (57%)' });
+      ladder.push({ step: 3, weight: 65.0, reps: 1, note: 'Подводящий сингл (65%)' });
+    } else if (weekNum === 2 || (workingWeight > 77.5 && workingWeight <= 82.5)) {
+      ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Старт и натяг (50%)' });
+      ladder.push({ step: 2, weight: 62.5, reps: 3, note: 'Скорость съема (62%)' });
+      ladder.push({ step: 3, weight: 72.5, reps: 1, note: 'Подводка перед рабочим (72%)' });
+    } else if (weekNum === 3 || (workingWeight > 72.5 && workingWeight <= 77.5)) {
+      ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Старт и натяг (50%)' });
+      ladder.push({ step: 2, weight: 60.0, reps: 3, note: 'Скорость съема (60%)' });
+      ladder.push({ step: 3, weight: 67.5, reps: 1, note: 'Подводка (67%)' });
+    } else if (weekNum === 4 || (workingWeight > 82.5 && workingWeight <= 87.5)) {
+      ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Старт и натяг (50%)' });
+      ladder.push({ step: 2, weight: 65.0, reps: 3, note: 'Скорость съема (65%)' });
+      ladder.push({ step: 3, weight: 77.5, reps: 1, note: 'Подводка (77%)' });
+    } else if (weekNum === 5 || workingWeight >= 90) {
+      ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Старт и натяг (50%)' });
+      ladder.push({ step: 2, weight: 67.5, reps: 3, note: 'Скорость съема (67%)' });
+      ladder.push({ step: 3, weight: 77.5, reps: 1, note: 'Подводка (77%)' });
+      ladder.push({ step: 4, weight: round25(workingWeight * 0.94), reps: 1, note: 'Активация ЦНС перед рекордом' });
+    } else if (weekNum === 6 || workingWeight <= 55) {
+      ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Легкий натяг' });
+    } else {
+      ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Старт и натяг' });
+      ladder.push({ step: 2, weight: round25(workingWeight * 0.70), reps: 3, note: 'Скорость' });
+      ladder.push({ step: 3, weight: round25(workingWeight * 0.85), reps: 1, note: 'Подводка' });
+    }
+  } else {
+    // Default fallback
+    if (workingWeight >= 30) {
+      ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф' });
+      ladder.push({ step: 2, weight: round25(workingWeight * 0.65), reps: 4, note: 'Подводка' });
     }
   }
+
   return ladder;
 }
 
@@ -2142,7 +2239,7 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
       rest_sec: goal === 'strength' ? (ex.rest || 120) + 30 : (ex.rest || 120),
       base_weight: workW,
       working_weight: workW,
-      warmup_ladder: (workW > 0 && isMainBase) ? getWarmupLadder(key, workW) : [],
+      warmup_ladder: (workW > 0 && isMainBase) ? getWarmupLadder(key, workW, 0, 1) : [],
       pubmed_tip: ex.tip || ''
     };
   };
@@ -2150,9 +2247,9 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
   if (splitType === 'recovery_3d') {
     splitName = 'SBD Троеборье: 2 Жима в неделю + Присед + Тяга (PubMed 2x)';
     daysLayout = [
-      { day_number: 1, title: 'Понедельник • Жим штанги лёжа (Тяжёлый / Силовой)', day_of_week: 'Понедельник', focus: 'Heavy Bench Press Power', exercises: [createEx('bench_press', 3, '6', 7.0)] },
-      { day_number: 2, title: 'Среда • Приседания со штангой (База)', day_of_week: 'Среда', focus: 'Heavy Squat Strength', exercises: [createEx('squat', 3, '6', 7.0)] },
-      { day_number: 3, title: 'Пятница • Становая тяга + Жим (Объёмный / Техника)', day_of_week: 'Пятница', focus: 'Deadlift Power & Volume Bench (Частота 2x PubMed)', exercises: [createEx('deadlift', 3, '5', 7.0), (function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5); return e; })()] }
+      { day_number: 1, title: 'Понедельник • Жим штанги лёжа (Тяжёлый / Силовой)', day_of_week: 'Понедельник', focus: 'Heavy Bench Press Power', exercises: [(function(){ const e = createEx('bench_press', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('bench_press', 50.0, 0, 1); return e; })()] },
+      { day_number: 2, title: 'Среда • Приседания со штангой (База)', day_of_week: 'Среда', focus: 'Heavy Squat Strength', exercises: [(function(){ const e = createEx('squat', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('squat', 55.0, 1, 1); return e; })()] },
+      { day_number: 3, title: 'Пятница • Становая тяга + Жим (Объёмный / Техника)', day_of_week: 'Пятница', focus: 'Deadlift Power & Volume Bench (Частота 2x PubMed)', exercises: [(function(){ const e = createEx('deadlift', 3, '5', 7.0); e.warmup_ladder = getWarmupLadder('deadlift', 70.0, 2, 1); return e; })(), (function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5, 2, 1); return e; })()] }
     ];
   } else if (splitType === 'sbd_3d') {
     splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
@@ -2357,7 +2454,7 @@ function setProgramWeek(weekNum) {
       }
 
       const isMainBase = (idx === 0 || ex.key === 'bench_press' || ex.key === 'squat' || ex.key === 'deadlift');
-      ex.warmup_ladder = (isMainBase && ex.working_weight > 0) ? getWarmupLadder(ex.key || 'bench_press', ex.working_weight) : [];
+      ex.warmup_ladder = (isMainBase && ex.working_weight > 0) ? getWarmupLadder(ex.key || 'bench_press', ex.working_weight, dayIdx, weekNum) : [];
 
       // Reps & Sets scaling for True Wave
       const isBaseLift = (ex.key === 'squat' || ex.key === 'bench_press' || ex.key === 'deadlift');
