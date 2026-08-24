@@ -139,13 +139,17 @@ async function loadData() {
       if (r.ok) {
         const serverData = await r.json();
         if (serverData && Array.isArray(serverData.workouts) && serverData.workouts.length > 0) {
-          const sIds = new Set(serverData.workouts.map(w => String(w.id)));
-          DB.workouts.forEach(w => {
-            if (!sIds.has(String(w.id))) serverData.workouts.push(w);
+          const localMap = new Map((DB.workouts || []).map(w => [String(w.id), w]));
+          serverData.workouts.forEach(sw => {
+            const wid = String(sw.id);
+            if (!localMap.has(wid)) {
+              localMap.set(wid, sw);
+            }
           });
-          DB.workouts = serverData.workouts;
+          DB.workouts = Array.from(localMap.values());
           localStorage.setItem('gym_db', JSON.stringify(DB));
-          initUI();
+          renderDiary(diaryDays || 0);
+          renderDashboard();
         }
       }
     } catch (e) {
@@ -1162,8 +1166,14 @@ function askChangeSetRPE(id, event) {
 function applySetRPEChange(set, next) {
   set.rpe = next;
   set.diff = next;
+  const idx = (DB.workouts || []).findIndex(w => String(w.id) === String(set.id));
+  if (idx !== -1) {
+    DB.workouts[idx].rpe = next;
+    DB.workouts[idx].diff = next;
+  }
+  localStorage.setItem('gym_db', JSON.stringify(DB));
   renderDiary(diaryDays);
-  showToast(`✅ Оценка изменена на: ${next}`);
+  showToast(`✅ Оценка сохранена: ${next}`);
   saveData(); // Фон
 }
 
