@@ -10,7 +10,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css?v=20260824_2045"/>
+  <link rel="stylesheet" href="style.css?v=20260824_2115"/>
 </head>
 <body>
 
@@ -552,29 +552,35 @@
 
 <!-- ═══════════════════════ GEMINI AI COACH MODAL ═══════════════════════ -->
 <div id="ai-coach-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this) closeAiCoachModal()">
-  <div class="modal-card glass" style="max-width: 480px; width: 100%; display: flex; flex-direction: column; max-height: 85vh; padding: 18px;">
-    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+  <div class="modal-card glass" style="max-width: 480px; width: 100%; display: flex; flex-direction: column; max-height: 88vh; padding: 16px;">
+    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:1.4rem;">🤖</span>
         <div>
           <h3 style="font-size:0.95rem; font-weight:800; margin:0;">Gemini AI Научный Тренер</h3>
-          <small style="font-size:0.68rem; color:var(--accent3);">PubMed & SBD Knowledge Engine</small>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+            <span class="badge" style="background:rgba(0,229,200,0.18); color:#5eead4; border:1px solid rgba(0,229,200,0.3); font-size:0.62rem; padding:1px 6px;">🟢 Синхронизирован с ботом</span>
+            <small style="font-size:0.65rem; color:var(--text2);">PubMed & DUP</small>
+          </div>
         </div>
       </div>
-      <button class="clear-btn" onclick="closeAiCoachModal()">✕</button>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button class="chip" onclick="clearAiChatHistory()" title="Очистить переписку" style="padding:2px 8px; font-size:0.7rem; background:rgba(255,77,109,0.15); border:1px solid rgba(255,77,109,0.3); color:#ff6b8b;">🗑 Очистить</button>
+        <button class="clear-btn" onclick="closeAiCoachModal()">✕</button>
+      </div>
     </div>
     
-    <div class="modal-body" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:0;">
+    <div class="modal-body" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:0;">
       <!-- API Key config row -->
       <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:10px; padding:8px 10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; font-weight:700; color:var(--text2);">
-          <span>🔑 Google AI Studio API Key</span>
+          <span>🔑 Google AI Studio API Key (Gemini)</span>
           <button class="chip" style="padding:2px 6px; font-size:0.65rem;" onclick="toggleApiKeyInput()">Настроить</button>
         </div>
         <div id="api-key-box" style="display:none; margin-top:6px;">
           <input type="password" id="gemini-api-key-input" class="glass-input" placeholder="Вставь API-ключ Gemini..." style="width:100%; box-sizing:border-box; font-size:0.78rem; padding:6px;"/>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-            <small style="font-size:0.65rem; color:var(--text2);"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent3); text-decoration:underline;">Получить ключ бесплатно</a></small>
+            <small style="font-size:0.65rem; color:var(--text2);"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent3); text-decoration:underline;">Получить ключ бесплатно в Google AI Studio</a></small>
             <button class="btn-primary" style="padding:3px 10px; font-size:0.7rem;" onclick="saveGeminiApiKey()">Сохранить</button>
           </div>
         </div>
@@ -591,17 +597,14 @@
         <button class="chip" onclick="setCoachPrompt('Как правильно принимать креатин и сколько воды пить в день?')">💊 Креатин и добавки</button>
       </div>
 
-      <!-- Chat History -->
-      <div id="ai-chat-messages" style="flex:1; min-height:160px; max-height:36vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:6px; background:rgba(0,0,0,0.2); border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
-        <div class="ai-msg assistant" style="background:rgba(124,92,255,0.15); border:1px solid rgba(124,92,255,0.3); border-radius:10px; padding:8px 10px; font-size:0.78rem; line-height:1.4;">
-          👋 Привет! Я твой персональный AI-тренер на базе Google Gemini и доказательной медицины PubMed. Я знаю твои силовые в жиме, приседе и тяге. Напиши любой вопрос по программе, самочувствию или технике!
-        </div>
+      <!-- Chat Messages Container -->
+      <div id="ai-chat-messages" style="flex:1; min-height:180px; max-height:40vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:8px; background:rgba(0,0,0,0.25); border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
       </div>
 
       <!-- Prompt Input -->
       <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
-        <input type="text" id="ai-coach-input" class="glass-input" placeholder="Спроси тренера..." style="flex:1; padding:8px 10px; font-size:0.82rem;" onkeydown="if(event.key==='Enter') sendAiCoachMessage()"/>
-        <button class="btn-primary" id="ai-send-btn" style="padding:8px 14px; font-size:0.85rem;" onclick="sendAiCoachMessage()">➤</button>
+        <input type="text" id="ai-coach-input" class="glass-input" placeholder="Задай любой вопрос ИИ-тренеру..." style="flex:1; padding:9px 12px; font-size:0.82rem;" onkeydown="if(event.key==='Enter') sendAiCoachMessage()"/>
+        <button class="btn-primary" id="ai-send-btn" style="padding:9px 14px; font-size:0.85rem;" onclick="sendAiCoachMessage()">➤</button>
       </div>
     </div>
   </div>
@@ -611,6 +614,6 @@
 <div class="toast" id="toast"></div>
 
 <!-- ═══════════════════════ SCRIPTS ═══════════════════════ -->
-<script src="app.js?v=20260824_2045"></script>
+<script src="app.js?v=20260824_2115"></script>
 </body>
 </html>
