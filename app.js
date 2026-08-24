@@ -5,7 +5,7 @@ if (tg) { tg.ready(); tg.expand(); }
 const API = 'https://kABACh0k.pythonanywhere.com/api'; // замени на URL своего сервера
 let DB = { workouts: [], profile: {}, body: [], program: null };
 let currentTab = 'dashboard';
-let diaryDays = 7; // Сохраняем текущий фильтр дневника
+let diaryDays = 0; // По умолчанию показываем 'Всё'
 let workout = { exercise: '', date: '', sets: [], rpe: 'Легко', weight: 80, reps: 8 };
 
 // SEEDED HISTORICAL DATABASE (110 Sets from gym_database.json)
@@ -75,55 +75,74 @@ function switchTab(name) {
 // ── Load Data ──
 async function loadData() {
   const uid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
-  if (!uid) {
-    // Demo mode — load from localStorage
-    const saved = localStorage.getItem('gym_db');
-    if (saved) DB = JSON.parse(saved);
-    if (!DB.workouts || DB.workouts.length === 0) {
-      DB.workouts = Array.isArray(SEEDED_WORKOUTS) ? [...SEEDED_WORKOUTS] : [];
-    }
-    if (!hasValidProgram(DB.program)) {
-      DB.program = getDefaultPersonalProgram();
-    }
-    saveData();
-    initUI(); return;
-  }
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-  try {
-    const r = await fetch(`${API}/data?uid=${uid}`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    DB = await r.json();
-    if (!DB.workouts || DB.workouts.length === 0) {
-      const saved = localStorage.getItem('gym_db');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.workouts && parsed.workouts.length > 0) DB.workouts = parsed.workouts;
-      }
-      if (!DB.workouts || DB.workouts.length === 0) {
-        DB.workouts = Array.isArray(SEEDED_WORKOUTS) ? [...SEEDED_WORKOUTS] : [];
-      }
+  // 1. Сначала мгновенно читаем локальные данные
+  const saved = localStorage.getItem('gym_db');
+  if (saved) {
+    try { 
+      DB = JSON.parse(saved); 
+    } catch (e) { 
+      DB = { workouts: [], profile: {}, body: [], program: null }; 
     }
-    if (!hasValidProgram(DB.program)) {
-      DB.program = getDefaultPersonalProgram();
-    }
-    saveData();
-  } catch (e) {
-    clearTimeout(timeoutId);
-    console.warn("API request failed or timed out. Falling back to localStorage.", e);
-    const saved = localStorage.getItem('gym_db');
-    if (saved) DB = JSON.parse(saved);
-    if (!DB.workouts || DB.workouts.length === 0) {
-      DB.workouts = Array.isArray(SEEDED_WORKOUTS) ? [...SEEDED_WORKOUTS] : [];
-    }
-    if (!hasValidProgram(DB.program)) {
-      DB.program = getDefaultPersonalProgram();
-    }
-    saveData();
   }
+
+  // 2. Гарантированно сливаем историю из базы (110 подходов)
+  if (!DB.workouts) DB.workouts = [];
+  const existingIds = new Set(DB.workouts.map(w => String(w.id)));
+  if (Array.isArray(SEEDED_WORKOUTS)) {
+    SEEDED_WORKOUTS.forEach(sw => {
+      if (!existingIds.has(String(sw.id))) {
+        DB.workouts.push(sw);
+        existingIds.add(String(sw.id));
+      }
+    });
+  }
+
+  if (!hasValidProgram(DB.program)) {
+    DB.program = getDefaultPersonalProgram();
+  }
+
+  // 3. Автоматически рассчитываем рекорды
+  if (!DB.profile) DB.profile = {};
+  if (!DB.profile.records || Object.keys(DB.profile.records).length === 0) {
+    DB.profile.records = {};
+    (DB.workouts || []).forEach(w => {
+      if (w.weight > 0 && w.reps > 0) {
+        const e = epley(w.weight, w.reps);
+        if (!DB.profile.records[w.exercise] || e > DB.profile.records[w.exercise]) {
+          DB.profile.records[w.exercise] = e;
+        }
+      }
+    });
+  }
+
+  // 4. Мгновенно сохраняем и отображаем интерфейс БЕЗ задержек
+  localStorage.setItem('gym_db', JSON.stringify(DB));
   initUI();
+
+  // 5. Фоновая синхронизация с сервером (если сервер доступен)
+  if (uid) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const r = await fetch(`${API}/data?uid=${uid}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (r.ok) {
+        const serverData = await r.json();
+        if (serverData && Array.isArray(serverData.workouts) && serverData.workouts.length > 0) {
+          const sIds = new Set(serverData.workouts.map(w => String(w.id)));
+          DB.workouts.forEach(w => {
+            if (!sIds.has(String(w.id))) serverData.workouts.push(w);
+          });
+          DB.workouts = serverData.workouts;
+          localStorage.setItem('gym_db', JSON.stringify(DB));
+          initUI();
+        }
+      }
+    } catch (e) {
+      // Игнорируем сетевые ошибки, данные уже на экране
+    }
+  }
 }
 
 let deletedIds = [];
@@ -171,9 +190,11 @@ function initUI() {
 
 function setupSVGGradient() {
   const svg = document.querySelector('.ring');
+  if (!svg) return;
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   defs.innerHTML = `<linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#00e5c8"/></linearGradient>`;
-  svg.prepend(defs);
+  if (svg.prepend) svg.prepend(defs);
+  else if (svg.appendChild) svg.appendChild(defs);
 }
 
 // ── Dashboard ──
