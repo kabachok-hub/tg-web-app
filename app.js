@@ -53,9 +53,19 @@ const epley = (w, r) => {
 const parseDate = s => { if (!s) return null; const [d, m, y] = s.split('.'); return new Date(+y, +m - 1, +d); };
 const fmtDate = d => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 
+let toastTimer = null;
 function showToast(msg) {
-  const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  const t = $('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.remove('show');
+  void t.offsetWidth; // Trigger reflow for instant animation
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+    toastTimer = null;
+  }, 2200);
 }
 
 function switchTab(name) {
@@ -928,9 +938,8 @@ async function saveWorkout() {
     }
   });
 
-  await saveData();
   if (newPrFound) {
-    showToast(`🏆 Новый рекорд в ${newPrFound.exercise}: ${newPrFound.weight}кг × ${newPrFound.reps} (1ПМ ${newPrFound.e1rm}кг)! Зафиксирован на новый цикл!`);
+    showToast(`🏆 Новый рекорд в ${newPrFound.exercise}: ${newPrFound.weight}кг × ${newPrFound.reps} (1ПМ ${newPrFound.e1rm}кг)!`);
   } else {
     showToast('✅ Тренировка сохранена!');
   }
@@ -954,6 +963,8 @@ async function saveWorkout() {
   syncWorkoutInputs(keepWeight, keepReps);
   renderExerciseChips();
   renderDashboard();
+
+  saveData(); // Фон
 }
 
 function selectExerciseByName(name) {
@@ -1065,7 +1076,7 @@ function renderDiary(days) {
 
         return `<div class="diary-set-pill" title="Подход ${idx + 1}: ${setRpe}">
           <span class="diary-set-pill-num">${idx + 1}</span>
-          <span class="diary-set-rpe-dot ${rpeDotClass}" onclick="cycleHistorySetRPE('${s.id}', event)" title="Сложность: ${setRpe} (нажми для смены)">${rpeIcon}</span>
+          <span class="diary-set-rpe-dot ${rpeDotClass}" onclick="askChangeSetRPE('${s.id}', event)" title="Сложность: ${setRpe} (нажми для смены)">${rpeIcon}</span>
           <span class="diary-set-pill-wt">${wt}</span>
           <span class="diary-set-pill-del" onclick="deleteHistorySet('${s.id}', event)" title="Удалить подход">&times;</span>
         </div>`;
@@ -1104,7 +1115,7 @@ function renderDiary(days) {
   }).join('');
 }
 
-async function cycleHistorySetRPE(id, event) {
+function askChangeSetRPE(id, event) {
   if (event) event.stopPropagation();
   const set = DB.workouts.find(w => String(w.id) === String(id));
   if (!set) return;
@@ -1113,11 +1124,26 @@ async function cycleHistorySetRPE(id, event) {
   if (cur === 'Легко') next = 'Средне';
   else if (cur === 'Средне' || cur === 'Средно') next = 'Тяжело';
   else next = 'Легко';
+
+  const question = `Хотите изменить оценку подхода #${set.set_num || ''} (${set.exercise || ''}) с «${cur}» на «${next}»?`;
+
+  if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.showConfirm === 'function') {
+    window.Telegram.WebApp.showConfirm(question, (confirmed) => {
+      if (confirmed) applySetRPEChange(set, next);
+    });
+  } else {
+    if (confirm(question)) {
+      applySetRPEChange(set, next);
+    }
+  }
+}
+
+function applySetRPEChange(set, next) {
   set.rpe = next;
   set.diff = next;
   renderDiary(diaryDays);
-  await saveData();
-  showToast(`✅ Сложность сета изменена на: ${next}`);
+  showToast(`✅ Оценка изменена на: ${next}`);
+  saveData(); // Фон
 }
 
 async function deleteHistorySet(id, event) {
@@ -1125,9 +1151,9 @@ async function deleteHistorySet(id, event) {
   if (!confirm('🗑 Удалить этот подход?')) return;
   deletedIds.push(String(id));
   DB.workouts = DB.workouts.filter(w => String(w.id) !== String(id));
-  renderDiary(diaryDays); // Используем сохранённый фильтр
-  await saveData();
+  renderDiary(diaryDays);
   showToast('✅ Подход удалён');
+  saveData(); // Фон
 }
 
 // ── Analytics ──
