@@ -238,19 +238,19 @@
   </div>
 
   <!-- Reps -->
-  <div class="section-title">Повторения — до 100 повт.</div>
+  <div class="section-title">Повторения — до 1000 повт.</div>
   <div class="slider-section">
     <div class="weight-display glass">
       <button class="adj-btn" onclick="adjustReps(-5)">−5</button>
       <button class="adj-btn" onclick="adjustReps(-1)">−1</button>
       <div class="val-center">
-        <input type="number" id="reps-input" value="8" min="1" max="100" class="val-input" oninput="updateRepsFromInput(this.value)"/>
+        <input type="number" id="reps-input" value="8" min="1" max="1000" class="val-input" oninput="updateRepsFromInput(this.value)"/>
         <small>повт.</small>
       </div>
       <button class="adj-btn" onclick="adjustReps(+1)">+1</button>
       <button class="adj-btn" onclick="adjustReps(+5)">+5</button>
     </div>
-    <input type="range" id="reps-slider" min="1" max="100" step="1" value="8" class="slider" oninput="updateRepsFromSlider(this.value)"/>
+    <input type="range" id="reps-slider" min="1" max="1000" step="1" value="8" class="slider" oninput="updateRepsFromSlider(this.value)"/>
   </div>
 
   <!-- RPE for this set -->
