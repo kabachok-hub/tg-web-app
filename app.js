@@ -147,6 +147,12 @@ async function loadData() {
             }
           });
           DB.workouts = Array.from(localMap.values());
+          if (Array.isArray(serverData.ai_chat_history) && serverData.ai_chat_history.length > 0 && (!DB.ai_chat_history || DB.ai_chat_history.length === 0)) {
+            DB.ai_chat_history = serverData.ai_chat_history;
+          }
+          if (serverData.gemini_key && !DB.gemini_key) {
+            DB.gemini_key = serverData.gemini_key;
+          }
           localStorage.setItem('gym_db', JSON.stringify(DB));
           renderDiary(diaryDays || 0);
           renderDashboard();
@@ -3141,6 +3147,7 @@ function openAiCoachModal() {
   if (m) m.style.display = 'flex';
   const inp = $('gemini-api-key-input');
   if (inp && DB.gemini_key) inp.value = DB.gemini_key;
+  renderAiChatHistory();
   setupCarouselDrag();
 }
 
@@ -3192,6 +3199,134 @@ function setCoachPrompt(txt) {
   }
 }
 
+function formatAiMessageText(txt) {
+  if (!txt) return '';
+  return txt
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>');
+}
+
+function renderAiChatHistory() {
+  const chat = $('ai-chat-messages');
+  if (!chat) return;
+
+  if (!DB.ai_chat_history || !Array.isArray(DB.ai_chat_history)) {
+    DB.ai_chat_history = [];
+  }
+
+  if (DB.ai_chat_history.length === 0) {
+    const records = (DB.profile && DB.profile.records) ? DB.profile.records : {};
+    const b = records['Жим лёжа'] || 69.3;
+    const s = records['Присед'] || 90.7;
+    const d = records['Становая тяга'] || 108.0;
+    const count = (DB.workouts || []).length;
+    chat.innerHTML = `
+      <div class="ai-msg assistant">
+        👋 <strong>Привет! Я твой персональный научный ИИ-тренер</strong> (Google Gemini + доказательная база PubMed).<br/><br/>
+        📊 <strong>Я знаю все твои тренировочные данные:</strong><br/>
+        • 🏋️ <strong>1ПМ Рекорды:</strong> Жим <strong>${b} кг</strong> · Присед <strong>${s} кг</strong> · Тяга <strong>${d} кг</strong><br/>
+        • 📈 <strong>История дневника:</strong> все <strong>${count} подходов</strong> с оценками RPE (🟢/🟡/🔴) учтены.<br/>
+        • 🧬 <strong>Программа:</strong> ${DB.program ? DB.program.split_name : 'Научный сплит'}.<br/><br/>
+        Задай любой вопрос по восстановлению, тренировкам, выходу из плато или питанию!
+      </div>
+    `;
+    return;
+  }
+
+  chat.innerHTML = DB.ai_chat_history.map(m => {
+    const formatted = formatAiMessageText(m.text);
+    const cls = m.role === 'user' ? 'ai-msg user' : 'ai-msg assistant';
+    return `<div class="${cls}">${formatted}</div>`;
+  }).join('');
+
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function clearAiChatHistory() {
+  if (confirm('🗑 Очистить всю историю переписки с ИИ-тренером?')) {
+    DB.ai_chat_history = [];
+    localStorage.setItem('gym_db', JSON.stringify(DB));
+    renderAiChatHistory();
+    showToast('✅ История чата очищена');
+    saveData();
+  }
+}
+
+function buildComprehensiveAthleteContext() {
+  const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  const userName = user && user.first_name ? user.first_name : 'Атлет';
+  const ws = DB.workouts || [];
+  const records = (DB.profile && DB.profile.records) ? DB.profile.records : {};
+  const prog = DB.program;
+  const health = (DB.body && DB.body.length > 0) ? DB.body[DB.body.length - 1] : {};
+
+  // Records
+  const recEntries = Object.entries(records).map(([k, v]) => `${k}: ${v} кг (1ПМ)`).join(', ') || 'Жим 69.3 кг, Присед 90.7 кг, Тяга 108.0 кг';
+
+  // Recent 5 workouts with per-set RPE
+  const byDate = {};
+  ws.forEach(w => {
+    if (!w || !w.date) return;
+    if (!byDate[w.date]) byDate[w.date] = [];
+    byDate[w.date].push(w);
+  });
+  const recentDates = Object.keys(byDate).sort((a, b) => (parseDate(b) || 0) - (parseDate(a) || 0)).slice(0, 5);
+
+  let recentWorkoutsSummary = '';
+  recentDates.forEach(d => {
+    const sets = byDate[d];
+    const exGroups = {};
+    sets.forEach(s => {
+      const ex = s.exercise || 'Упражнение';
+      if (!exGroups[ex]) exGroups[ex] = [];
+      const rpe = s.rpe || s.diff || 'Легко';
+      const rpeEmoji = rpe === 'Тяжело' ? '🔴 Тяжело' : (rpe === 'Средне' || rpe === 'Средно') ? '🟡 Средне' : '🟢 Легко';
+      exGroups[ex].push(`${s.weight > 0 ? s.weight + 'кг' : 'BW'}×${s.reps} (${rpeEmoji})`);
+    });
+    recentWorkoutsSummary += `\n- Дата ${d}:\n` + Object.entries(exGroups).map(([ex, slist]) => `   * ${ex}: ${slist.join(', ')}`).join('\n');
+  });
+
+  // Program status
+  let programSummary = 'Программа не настроена';
+  if (prog) {
+    const curW = prog.current_week || 1;
+    const curWInfo = (prog.wave_matrix || []).find(m => m.week_number === curW);
+    programSummary = `${prog.split_name || prog.split_type}, Неделя ${curW} из 6 (${curWInfo ? curWInfo.phase : 'Фаза прогресса'}, Целевой RPE: ${curWInfo ? curWInfo.target_rpe : 8.0})`;
+  }
+
+  // Health
+  let healthSummary = `Сон: ${health.sleep || '7.5'} ч, Вода: ${health.water || '2.5'} л, Вес тела: ${health.weight || '78'} кг, Калории: ${health.calories || '2400'} ккал`;
+
+  return `
+Ты — элитный персональный научный тренер по силовым тренировкам (Evidence-Based Strength & Hypertrophy Coach) на базе мета-анализов PubMed (Brad Schoenfeld, Eric Helms, Mike Zourdos, Mark Latash).
+Ты знаешь абсолютно всю тренировочную историю и физиологические параметры атлета:
+
+👤 ПРОФИЛЬ АТЛЕТА:
+- Имя: ${userName}
+- Параметры здоровья на сегодня: ${healthSummary}
+- Особенность: Медленный тип восстановления, высокая чувствительность к осевым нагрузкам на позвоночник (нужен грамотный разнос приседа и тяги, баланс жимов и тяг 1:1).
+
+🏆 РЕКОРДЫ (1ПМ):
+${recEntries}
+
+🧬 ТЕКУЩАЯ ПРОГРАММА:
+${programSummary}
+
+📋 ПОСЛЕДНИЕ ТРЕНИРОВКИ ИЗ ДНЕВНИКА (Всего в базе ${ws.length} подходов):
+${recentWorkoutsSummary || '110 подходов зафиксировано в базе данных.'}
+
+ПРАВИЛА ОТВЕТА:
+1. Обращайся к атлету дружелюбно, по-тренерски уверенно и профессионально.
+2. Используй точные данные атлета (его реальные веса, подходы, уровень усталости RPE, неделю программы).
+3. Приводи научные обоснования (PubMed, авторы: Schoenfeld, Helms, Morton, Zourdos, Latash) с понятными конкретными рекомендациями (в кг, подходах, повторениях, минутах отдыха).
+4. Пиши структурированно, без лишней воды, выделяя главное жирным шрифтом.
+`.trim();
+}
+
 async function sendAiCoachMessage() {
   const inp = $('ai-coach-input');
   const txt = (inp.value || '').trim();
@@ -3201,69 +3336,68 @@ async function sendAiCoachMessage() {
   const chat = $('ai-chat-messages');
   if (!chat) return;
 
+  if (!DB.ai_chat_history) DB.ai_chat_history = [];
+
+  // Add user message to persistent history
+  const userMsg = { role: 'user', text: txt, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) };
+  DB.ai_chat_history.push(userMsg);
+  localStorage.setItem('gym_db', JSON.stringify(DB));
+
   // Render User Bubble
-  chat.innerHTML += `<div class="ai-msg user">${txt}</div>`;
+  chat.innerHTML += `<div class="ai-msg user">${formatAiMessageText(txt)}</div>`;
   chat.scrollTop = chat.scrollHeight;
 
   // Render Typing Placeholder
   const placeholderId = 'ai-typing-' + Date.now();
-  chat.innerHTML += `<div class="ai-msg assistant" id="${placeholderId}">⏳ ИИ-Тренер анализирует научную базу и ваши силовые...</div>`;
+  chat.innerHTML += `<div class="ai-msg assistant" id="${placeholderId}">⏳ ИИ-Тренер анализирует вашу тренировочную историю и научную базу...</div>`;
   chat.scrollTop = chat.scrollHeight;
 
   const key = DB.gemini_key;
-  const ws = DB.workouts || [];
-  const records = DB.profile.records || {};
-  const prog = DB.program;
-
-  // Prepare prompt context
-  const contextStr = `
-Ты — элитный научный тренер по силовым тренировкам (Evidence-Based Strength Coach) на основе мета-анализов PubMed (Schoenfeld, Helms, Zourdos, Latash).
-Данные атлета:
-- 1RM Рекорды: Жим лёжа: ${records['Жим лёжа'] || 68} кг, Присед: ${records['Присед'] || 90} кг, Становая тяга: ${records['Становая тяга'] || 100} кг.
-- Активная программа: ${prog ? `${prog.split_name}, Неделя ${prog.current_week || 1} из 6` : 'Не выбрана'}.
-- Особенность атлета: Медленный тип восстановления, высокая чувствительность к осевым нагрузкам на позвоночник.
-- Всего тренировок в дневнике: ${ws.length}.
-
-Вопрос атлета: "${txt}".
-
-Ответь кратко, четко, с научным объяснением (PubMed), практическими цифрами и вдохновляющим тоном. Не используй воду.
-  `.trim();
+  const systemPrompt = buildComprehensiveAthleteContext();
 
   let replyText = '';
 
   if (key) {
     try {
-      // Flagship & Modern Gemini Models (Auto-fallback)
       const modelsToTry = [
-        'gemini-3.6-flash',
-        'gemini-3.7-flash',
-        'gemini-3.6-pro',
         'gemini-2.5-flash',
         'gemini-2.5-pro',
-        'gemini-2.0-pro-exp-02-05',
-        'gemini-2.0-flash-thinking-exp-01-21',
-        'gemini-2.0-flash'
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro'
       ];
       let data = null;
       let lastErrMsg = '';
+
+      // Multi-turn dialog context
+      const contents = [];
+      const historySlice = DB.ai_chat_history.slice(-8); // include up to last 8 turns for context
+      
+      contents.push({ role: 'user', parts: [{ text: systemPrompt + '\n\n[Начало диалога]' }] });
+      contents.push({ role: 'model', parts: [{ text: 'Понял всю информацию об атлете, силовых показателях, программе и истории тренировок. Готов давать точные персонализированные научные рекомендации!' }] });
+
+      historySlice.forEach(h => {
+        contents.push({
+          role: h.role === 'user' ? 'user' : 'model',
+          parts: [{ text: h.text }]
+        });
+      });
 
       for (const m of modelsToTry) {
         try {
           const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: contextStr }] }]
-            })
+            body: JSON.stringify({ contents })
           });
           const resJson = await resp.json();
           if (resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content) {
             data = resJson;
-            break; // Success!
+            break;
           } else if (resJson.error) {
             lastErrMsg = resJson.error.message;
             if (resJson.error.code === 400 && resJson.error.message.includes('API key not valid')) {
-              break; // Stop immediately if key itself is invalid
+              break;
             }
           }
         } catch (e) {
@@ -3274,43 +3408,67 @@ async function sendAiCoachMessage() {
       if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
         replyText = data.candidates[0].content.parts[0].text;
       } else if (lastErrMsg) {
-        replyText = `⚠️ Ошибка Gemini API: ${lastErrMsg}`;
+        replyText = `⚠️ Ошибка Gemini API (${lastErrMsg}). Переключаюсь на встроенную научную базу.`;
       }
     } catch (err) {
       replyText = `⚠️ Ошибка сети при запросе к Gemini: ${err.message}`;
     }
   }
 
-  if (!replyText) {
-    // Offline / Fallback Evidence-based response engine
+  if (!replyText || replyText.startsWith('⚠️')) {
+    // Evidence-based smart fallback with user's real numbers
     const lower = txt.toLowerCase();
+    const records = (DB.profile && DB.profile.records) ? DB.profile.records : {};
+    const b1 = records['Жим лёжа'] || 69.3;
+    const s1 = records['Присед'] || 90.7;
+    const d1 = records['Становая тяга'] || 108.0;
+    const prog = DB.program;
+    const curW = prog ? (prog.current_week || 1) : 1;
+
     if (lower.includes('восстанов') || lower.includes('сон') || lower.includes('устал')) {
-      replyText = `😴 **Научный разбор восстановления (PubMed):**
-1. **Разнос осевых нагрузок:** Не делайте присед и тягу в один день. Между ними должно быть минимум 48 часов отдыха (*Latash, 2008*).
+      replyText = `😴 **Научный разбор восстановления для ваших силовых (PubMed):**
+1. **Разнос осевых нагрузок:** Жим (${b1} кг) и Тягу (${d1} кг) обязательно разносите минимум на 48 часов отдыха (*Latash, 2008*).
 2. **Сон 8+ часов:** 95% гормона роста и синтеза мышечного белка выделяется в глубоких фазах сна (*Dattilo et al., 2011*).
-3. **Волновая периодизация:** После 5 недель прогресса обязательно делайте 6-ю неделю Deload (55% от 1ПМ), чтобы дать ЦНС полностью восстановиться.`;
+3. **Волновая периодизация:** Вы на Неделе ${curW} из 6. На 6-й неделе запланирован Deload (55%), который сбросит накопленное утомление ЦНС.`;
     } else if (lower.includes('плато') || lower.includes('жим')) {
-      replyText = `💪 **Как пробить плато в жиме лёжа (PubMed):**
-1. **Баланс тяг к жимам 1:1:** Добавьте тягу штанги в наклоне с весом 70% от жима (47.5 кг). Это стабилизирует плечевой сустав (*Cools et al., 2015*).
-2. **Наклонный жим гантелей 30°:** 3 подхода по 8-10 повт с гантелями по 16-18 кг укрепят верх груди.
-3. **Работа с запасом RIR 1-2:** Не жмите до отказа на каждой тренировке — работа на RPE 7.5-8.0 дает максимум гипертрофии без выжигания нервной системы (*Helms, 2018*).`;
+      const dbPress = Math.round(b1 * 0.25 * 2) / 2;
+      replyText = `💪 **Стратегия пробития плато в жиме лёжа (Текущий 1ПМ ≈ ${b1} кг):**
+1. **Баланс тяг к жимам 1:1:** Добавьте тягу гантелей или штанги с весом ~${Math.round(b1 * 0.7)} кг для балансировки ротаторной манжеты (*Cools et al., 2015*).
+2. **Наклонный жим гантелей 30°:** 3 подхода по 8–10 повторений с гантелями по ${dbPress} кг для активации ключичной порции груди.
+3. **Работа с запасом RIR 1-2 (RPE 7.5–8.0):** Не доходите до отказа в каждом подходе, это сохранит миофибриллы для суперкомпенсации (*Helms, 2018*).`;
     } else if (lower.includes('белок') || lower.includes('питан') || lower.includes('калор')) {
-      replyText = `🥩 **Нормы питания для натурального атлета (Morton et al., 2018):**
-1. **Белок:** 1.6–2.0 г на 1 кг веса тела в сутки, разбитый на 3–4 приема по 30–40 г.
+      replyText = `🥩 **Научные нормы питания (Morton et al., 2018):**
+1. **Белок:** 1.6–2.0 г на 1 кг веса тела (~130–160 г/день), разбитый на 3–4 приема по 35–40 г.
 2. **Вода:** 35–40 мл на кг веса (2.5–3.0 л в день) для оптимального синтеза гликогена.
 3. **Креатин моногидрат:** 5 г в день ежедневно для увеличения запасов фосфокреатина и роста силы на 5–10%.`;
+    } else if (lower.includes('размин') || lower.includes('лесенк')) {
+      replyText = `⚡ **Научный протокол разминки (Warm-up Ladder):**
+Для вашего рабочего веса:
+• Сет 1: 20 кг (пустой гриф) × 10 (суставная активация)
+• Сет 2: 40-50% × 5 (нейромышечная настройка)
+• Сет 3: 70-75% × 3 (проверка траектории без утомления)
+• Сет 4: 85-90% × 1 (активация высокопороговых ДЕ)
+• **Рабочие сеты:** целевой вес с максимальной мощностью!`;
     } else {
-      replyText = `🧬 **Рекомендация по программе:**
-Ваш текущий 6-недельный цикл рассчитан строго по формуле 1RM Эпли. На текущей неделе придерживайтесь целевого RPE и делайте плавную разминку для первого упражнения дня.
-💡 *Для интерактивного диалога с нейросетью вставьте бесплатный API-ключ в поле Google AI Studio выше!*`;
+      replyText = `🧬 **Анализ тренировочного профиля:**
+В вашей базе **${(DB.workouts || []).length} подходов**, рекорды: Жим **${b1} кг**, Присед **${s1} кг**, Тяга **${d1} кг**.
+Текущая программа: **${prog ? prog.split_name : 'Научный сплит'}**, Неделя **${curW} из 6**.
+💡 *Совет:* Для свободных ответов на любые нестандартные вопросы подключите бесплатный API-ключ Google AI Studio сверху!`;
     }
   }
 
+  // Save Assistant reply to persistent history
+  const assistantMsg = { role: 'assistant', text: replyText, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) };
+  DB.ai_chat_history.push(assistantMsg);
+  localStorage.setItem('gym_db', JSON.stringify(DB));
+
   const el = $(placeholderId);
   if (el) {
-    el.innerHTML = replyText.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>');
+    el.innerHTML = formatAiMessageText(replyText);
     chat.scrollTop = chat.scrollHeight;
   }
+
+  saveData(); // Фон
 }
 
 function launchWorkoutFromProgram(dayIdx) {
