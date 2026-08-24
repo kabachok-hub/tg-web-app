@@ -3145,10 +3145,32 @@ function promptUpdate1RM() {
 function openAiCoachModal() {
   const m = $('ai-coach-modal');
   if (m) m.style.display = 'flex';
+  if (!DB.gemini_key) {
+    DB.gemini_key = localStorage.getItem('gym_gemini_key') || '';
+  }
   const inp = $('gemini-api-key-input');
-  if (inp && DB.gemini_key) inp.value = DB.gemini_key;
+  if (inp) inp.value = DB.gemini_key || '';
+  updateAiCoachKeyStatus();
   renderAiChatHistory();
   setupCarouselDrag();
+}
+
+function updateAiCoachKeyStatus() {
+  const badge = $('ai-status-badge');
+  const key = (DB.gemini_key || localStorage.getItem('gym_gemini_key') || '').trim();
+  if (badge) {
+    if (key) {
+      badge.style.background = 'rgba(16,185,129,0.2)';
+      badge.style.color = '#5eead4';
+      badge.style.borderColor = 'rgba(16,185,129,0.35)';
+      badge.textContent = '🟢 Gemini AI Онлайн';
+    } else {
+      badge.style.background = 'rgba(234,179,8,0.2)';
+      badge.style.color = '#facc15';
+      badge.style.borderColor = 'rgba(234,179,8,0.35)';
+      badge.textContent = '🟡 Оффлайн база';
+    }
+  }
 }
 
 function setupCarouselDrag() {
@@ -3185,10 +3207,13 @@ function toggleApiKeyInput() {
 function saveGeminiApiKey() {
   const key = ($('gemini-api-key-input').value || '').trim();
   DB.gemini_key = key;
+  localStorage.setItem('gym_gemini_key', key);
+  localStorage.setItem('gym_db', JSON.stringify(DB));
   saveData();
   showToast(key ? '🔑 API-ключ Gemini сохранен!' : 'Ключ удален');
   const b = $('api-key-box');
   if (b) b.style.display = 'none';
+  updateAiCoachKeyStatus();
 }
 
 function setCoachPrompt(txt) {
@@ -3349,73 +3374,92 @@ async function sendAiCoachMessage() {
 
   // Render Typing Placeholder
   const placeholderId = 'ai-typing-' + Date.now();
-  chat.innerHTML += `<div class="ai-msg assistant" id="${placeholderId}">⏳ ИИ-Тренер анализирует вашу тренировочную историю и научную базу...</div>`;
+  chat.innerHTML += `<div class="ai-msg assistant" id="${placeholderId}">⏳ Gemini AI анализирует ваш вопрос и данные тренировок...</div>`;
   chat.scrollTop = chat.scrollHeight;
 
-  const key = DB.gemini_key;
+  const key = (DB.gemini_key || localStorage.getItem('gym_gemini_key') || '').trim();
   const systemPrompt = buildComprehensiveAthleteContext();
 
   let replyText = '';
 
   if (key) {
-    try {
-      const modelsToTry = [
-        'gemini-2.5-flash',
-        'gemini-2.5-pro',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro'
-      ];
-      let data = null;
-      let lastErrMsg = '';
+    // Official production Google AI Studio models in priority order
+    const modelsToTry = [
+      'gemini-1.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash-8b'
+    ];
 
-      // Multi-turn dialog context
-      const contents = [];
-      const historySlice = DB.ai_chat_history.slice(-8); // include up to last 8 turns for context
-      
-      contents.push({ role: 'user', parts: [{ text: systemPrompt + '\n\n[Начало диалога]' }] });
-      contents.push({ role: 'model', parts: [{ text: 'Понял всю информацию об атлете, силовых показателях, программе и истории тренировок. Готов давать точные персонализированные научные рекомендации!' }] });
+    // Build strictly alternating dialog turns (user, model, user, model...)
+    const chatTurns = [];
+    const recentHistory = DB.ai_chat_history.slice(-8);
 
-      historySlice.forEach(h => {
-        contents.push({
-          role: h.role === 'user' ? 'user' : 'model',
-          parts: [{ text: h.text }]
+    for (const h of recentHistory) {
+      const role = h.role === 'user' ? 'user' : 'model';
+      if (chatTurns.length > 0 && chatTurns[chatTurns.length - 1].role === role) {
+        chatTurns[chatTurns.length - 1].parts[0].text += '\n' + (h.text || '');
+      } else {
+        chatTurns.push({ role, parts: [{ text: h.text || '' }] });
+      }
+    }
+
+    if (chatTurns.length === 0 || chatTurns[0].role === 'model') {
+      chatTurns.unshift({ role: 'user', parts: [{ text: txt }] });
+    }
+
+    let lastErrMsg = '';
+
+    for (const m of modelsToTry) {
+      try {
+        let resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            contents: chatTurns
+          })
         });
-      });
 
-      for (const m of modelsToTry) {
-        try {
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
+        let resJson = await resp.json();
+
+        // Fallback for models or API versions not supporting systemInstruction field
+        if (resJson.error && resJson.error.message && (resJson.error.message.includes('systemInstruction') || resJson.error.code === 400)) {
+          const fallbackTurns = JSON.parse(JSON.stringify(chatTurns));
+          if (fallbackTurns[0] && fallbackTurns[0].parts && fallbackTurns[0].parts[0]) {
+            fallbackTurns[0].parts[0].text = `[СИСТЕМНЫЙ КОНТЕКСТ ТРЕНЕРА]\n${systemPrompt}\n\n[СООБЩЕНИЕ АТЛЕТА]:\n${fallbackTurns[0].parts[0].text}`;
+          }
+          resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents })
+            body: JSON.stringify({ contents: fallbackTurns })
           });
-          const resJson = await resp.json();
-          if (resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content) {
-            data = resJson;
-            break;
-          } else if (resJson.error) {
-            lastErrMsg = resJson.error.message;
-            if (resJson.error.code === 400 && resJson.error.message.includes('API key not valid')) {
-              break;
-            }
-          }
-        } catch (e) {
-          lastErrMsg = e.message;
+          resJson = await resp.json();
         }
-      }
 
-      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-        replyText = data.candidates[0].content.parts[0].text;
-      } else if (lastErrMsg) {
-        replyText = `⚠️ Ошибка Gemini API (${lastErrMsg}). Переключаюсь на встроенную научную базу.`;
+        if (resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0]) {
+          replyText = resJson.candidates[0].content.parts[0].text;
+          break; // Success from Gemini API!
+        } else if (resJson.error) {
+          lastErrMsg = resJson.error.message || 'Ошибка API';
+          if (resJson.error.code === 400 && lastErrMsg.includes('API key not valid')) {
+            replyText = `⚠️ **Неверный API-ключ Gemini.** Пожалуйста, проверьте ключ в Google AI Studio.`;
+            break;
+          }
+        }
+      } catch (e) {
+        lastErrMsg = e.message;
       }
-    } catch (err) {
-      replyText = `⚠️ Ошибка сети при запросе к Gemini: ${err.message}`;
+    }
+
+    if (!replyText && lastErrMsg) {
+      console.warn('Gemini API Warning:', lastErrMsg);
     }
   }
 
-  if (!replyText || replyText.startsWith('⚠️')) {
+  if (!replyText) {
     // Evidence-based smart fallback with user's real numbers
     const lower = txt.toLowerCase();
     const records = (DB.profile && DB.profile.records) ? DB.profile.records : {};
@@ -3453,7 +3497,7 @@ async function sendAiCoachMessage() {
       replyText = `🧬 **Анализ тренировочного профиля:**
 В вашей базе **${(DB.workouts || []).length} подходов**, рекорды: Жим **${b1} кг**, Присед **${s1} кг**, Тяга **${d1} кг**.
 Текущая программа: **${prog ? prog.split_name : 'Научный сплит'}**, Неделя **${curW} из 6**.
-💡 *Совет:* Для свободных ответов на любые нестандартные вопросы подключите бесплатный API-ключ Google AI Studio сверху!`;
+💡 *Совет:* Для онлайн-ответов от нейросети вставьте API-ключ в поле Google AI Studio сверху!`;
     }
   }
 
