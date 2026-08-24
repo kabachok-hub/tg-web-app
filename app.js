@@ -340,44 +340,281 @@ function renderPRList() {
   if (!list.innerHTML) list.innerHTML = '<p class="empty-state">Нет рекордов</p>';
 }
 
-// ── Workout Tab ──
-function renderExerciseChips() {
+// ═══════════════════════ EXERCISE CATALOG & SMART PICKER ═══════════════════════
+const POPULAR_EXERCISES = [
+  // 🏋️ Грудь (Chest)
+  { name: 'Жим лёжа', category: 'chest', icon: '🏋️' },
+  { name: 'Жим гантелей на наклонной скамье', category: 'chest', icon: '📐' },
+  { name: 'Жим гантелей лёжа', category: 'chest', icon: '🏋️' },
+  { name: 'Отжимания на брусьях (акцент на грудь)', category: 'chest', icon: '🔥' },
+  { name: 'Сведение рук в кроссовере / бабочке', category: 'chest', icon: '🦋' },
+  { name: 'Жим в Хаммере', category: 'chest', icon: '⚙️' },
+  { name: 'Отжимания от пола', category: 'chest', icon: '🤸' },
+
+  // 🔙 Спина (Back)
+  { name: 'Становая тяга', category: 'back', icon: '🔗' },
+  { name: 'Тяга штанги в наклоне', category: 'back', icon: '🚣' },
+  { name: 'Тяга верхнего блока к груди', category: 'back', icon: '⬇️' },
+  { name: 'Подтягивания на турнике', category: 'back', icon: '🧗' },
+  { name: 'Подтягивания с резинкой', category: 'back', icon: '🎗️' },
+  { name: 'Тяга нижнего (горизонтального) блока', category: 'back', icon: '🛶' },
+  { name: 'Тяга гантели в наклоне (одной рукой)', category: 'back', icon: '💪' },
+  { name: 'Пулловер с гантелью / на блоке', category: 'back', icon: '🌊' },
+  { name: 'Гиперэкстензия (горизонтальная / 45°)', category: 'back', icon: '🛡️' },
+  { name: 'Шраги со штангой / гантелями', category: 'back', icon: '🏔️' },
+
+  // 🦵 Ноги (Legs)
+  { name: 'Присед', category: 'legs', icon: '🦵' },
+  { name: 'Приседания со штангой', category: 'legs', icon: '🦵' },
+  { name: 'Румынская тяга (на бицепс бедра)', category: 'legs', icon: '⚡' },
+  { name: 'Жим ногами в тренажере', category: 'legs', icon: '🚜' },
+  { name: 'Болгарские сплит-приседания', category: 'legs', icon: '🔥' },
+  { name: 'Выпады с гантелями', category: 'legs', icon: '🚶' },
+  { name: 'Разгибания ног сидя в тренажере', category: 'legs', icon: '🦵' },
+  { name: 'Сгибания ног лёжа в тренажере', category: 'legs', icon: '🦿' },
+  { name: 'Подъём на носки стоя (икры)', category: 'legs', icon: '👟' },
+  { name: 'Гакк-приседания', category: 'legs', icon: '🏗️' },
+
+  // 🛡️ Плечи (Shoulders)
+  { name: 'Армейский жим стоя (Overhead Press)', category: 'shoulders', icon: '🚀' },
+  { name: 'Жим гантелей сидя', category: 'shoulders', icon: '🛡️' },
+  { name: 'Махи гантелями в стороны (средняя дельта)', category: 'shoulders', icon: '🦅' },
+  { name: 'Face Pulls (тяга каната к лицу)', category: 'shoulders', icon: '🎭' },
+  { name: 'Махи в наклоне (задняя дельта)', category: 'shoulders', icon: '🦇' },
+  { name: 'Протяжка штанги к подбородку', category: 'shoulders', icon: '⬆️' },
+
+  // 💪 Руки (Arms)
+  { name: 'Подъём штанги на бицепс', category: 'arms', icon: '💪' },
+  { name: 'Французский жим со штангой (EZ)', category: 'arms', icon: '⚡' },
+  { name: 'Разгибания на трицепс на блоке (канаты)', category: 'arms', icon: '🔻' },
+  { name: 'Молотки с гантелями (Hammer Curls)', category: 'arms', icon: '🔨' },
+  { name: 'Подъём гантелей на бицепс сидя', category: 'arms', icon: '🏋️' },
+  { name: 'Жим штанги узким хватом', category: 'arms', icon: '🔥' },
+  { name: 'Сгибания на скамье Скотта', category: 'arms', icon: '🎯' },
+  { name: 'Отжимания на брусьях (акцент на трицепс)', category: 'arms', icon: '💥' },
+
+  // ⚡ Пресс & Кор (Core)
+  { name: 'Скручивания на пресс', category: 'core', icon: '⚡' },
+  { name: 'Подъём ног в висе на турнике', category: 'core', icon: '🧗' },
+  { name: 'Скручивания на блоке (Молитва)', category: 'core', icon: '🙏' },
+  { name: 'Планка', category: 'core', icon: '🧱' },
+  { name: 'Боковая планка', category: 'core', icon: '📐' },
+  { name: 'Вакуум живота', category: 'core', icon: '🌬️' }
+];
+
+let activeExerciseCategory = 'recent';
+let exerciseSearchQuery = '';
+
+function getExerciseIcon(name) {
+  if (!name) return '🎯';
+  const found = POPULAR_EXERCISES.find(e => e.name.toLowerCase() === name.toLowerCase());
+  if (found) return found.icon;
+  const n = name.toLowerCase();
+  if (n.includes('жим')) return '🏋️';
+  if (n.includes('тяг')) return '🔗';
+  if (n.includes('присед') || n.includes('ног')) return '🦵';
+  if (n.includes('бицепс') || n.includes('трицепс') || n.includes('рук')) return '💪';
+  if (n.includes('пресс') || n.includes('планк') || n.includes('скручиван')) return '⚡';
+  if (n.includes('подтягиван')) return '🧗';
+  if (n.includes('плеч') || n.includes('мах')) return '🛡️';
+  return '🎯';
+}
+
+function getRecentAndFrequentExercises() {
   const ws = DB.workouts || [];
-  const defaults = ['Жим лёжа', 'Становая тяга', 'Присед'];
-  const custom = [...new Set(ws.map(w => w.exercise))].filter(e => !defaults.includes(e)).slice(0, 5);
-  const all = [...defaults, ...custom];
+  const freqMap = {};
+  const lastDateMap = {};
+  
+  ws.forEach(w => {
+    if (!w.exercise) return;
+    freqMap[w.exercise] = (freqMap[w.exercise] || 0) + 1;
+    const d = parseDate(w.date) || new Date(0);
+    if (!lastDateMap[w.exercise] || d > lastDateMap[w.exercise]) {
+      lastDateMap[w.exercise] = d;
+    }
+  });
+
+  const baseDefaults = ['Жим лёжа', 'Присед', 'Становая тяга'];
+  baseDefaults.forEach(def => {
+    if (!(def in freqMap)) freqMap[def] = 1;
+    if (!(def in lastDateMap)) lastDateMap[def] = new Date();
+  });
+
+  (DB.custom_exercises || []).forEach(cust => {
+    if (!(cust in freqMap)) freqMap[cust] = 2;
+    if (!(cust in lastDateMap)) lastDateMap[cust] = new Date();
+  });
+
+  const sorted = Object.keys(freqMap).sort((a, b) => {
+    const dateDiff = (lastDateMap[b] || 0) - (lastDateMap[a] || 0);
+    if (dateDiff !== 0) return dateDiff;
+    return (freqMap[b] || 0) - (freqMap[a] || 0);
+  });
+
+  return sorted;
+}
+
+function renderExerciseChips() {
   const chips = $('exercise-chips');
   const achips = $('analytics-chips');
-  chips.innerHTML = '';
-  achips && (achips.innerHTML = '');
-  all.forEach(ex => {
-    chips.innerHTML += `<button class="ex-chip" onclick="selectExercise('${ex}', this)">${ex}</button>`;
-    achips && (achips.innerHTML += `<button class="ex-chip" onclick="selectAnalyticsEx('${ex}', this)">${ex}</button>`);
+  if (!chips) return;
+
+  const recents = getRecentAndFrequentExercises();
+  const customList = DB.custom_exercises || [];
+
+  const allMap = new Map();
+  
+  POPULAR_EXERCISES.forEach(item => {
+    allMap.set(item.name.toLowerCase(), { name: item.name, category: item.category, icon: item.icon });
   });
+
+  recents.forEach(name => {
+    const key = name.toLowerCase();
+    if (!allMap.has(key)) {
+      allMap.set(key, { name: name, category: 'other', icon: getExerciseIcon(name) });
+    }
+  });
+  customList.forEach(name => {
+    const key = name.toLowerCase();
+    if (!allMap.has(key)) {
+      allMap.set(key, { name: name, category: 'other', icon: getExerciseIcon(name) });
+    }
+  });
+
+  let itemsToDisplay = [];
+  const q = (exerciseSearchQuery || '').trim().toLowerCase();
+
+  if (q) {
+    allMap.forEach(item => {
+      if (item.name.toLowerCase().includes(q)) {
+        itemsToDisplay.push(item);
+      }
+    });
+  } else if (activeExerciseCategory === 'recent') {
+    const seen = new Set();
+    recents.forEach(name => {
+      const key = name.toLowerCase();
+      const item = allMap.get(key) || { name: name, category: 'other', icon: getExerciseIcon(name) };
+      if (!seen.has(item.name.toLowerCase())) {
+        seen.add(item.name.toLowerCase());
+        itemsToDisplay.push(item);
+      }
+    });
+  } else if (activeExerciseCategory === 'all') {
+    allMap.forEach(item => itemsToDisplay.push(item));
+  } else {
+    allMap.forEach(item => {
+      if (item.category === activeExerciseCategory) {
+        itemsToDisplay.push(item);
+      }
+    });
+  }
+
+  const badge = $('ex-counter-badge');
+  if (badge) {
+    badge.textContent = `${itemsToDisplay.length} упражнений`;
+  }
+
+  chips.innerHTML = '';
+  if (itemsToDisplay.length === 0) {
+    chips.innerHTML = `
+      <div style="width:100%; text-align:center; padding:12px; color:var(--text2); font-size:0.8rem;">
+        🔍 Не найдено. Нажми <strong>«+ Ввод»</strong> выше, чтобы добавить «<strong>${q}</strong>» в базу!
+      </div>
+    `;
+  } else {
+    itemsToDisplay.forEach(item => {
+      const isSelected = (workout.exercise || '').toLowerCase() === item.name.toLowerCase();
+      chips.innerHTML += `
+        <button class="ex-chip ${isSelected ? 'active' : ''}" onclick="selectExercise('${item.name.replace(/'/g, "\\'")}', this)">
+          <span>${item.icon || getExerciseIcon(item.name)}</span> ${item.name}
+        </button>
+      `;
+    });
+  }
+
+  if (achips) {
+    achips.innerHTML = '';
+    const topAnalytics = recents.slice(0, 10);
+    topAnalytics.forEach(ex => {
+      achips.innerHTML += `<button class="ex-chip" onclick="selectAnalyticsEx('${ex.replace(/'/g, "\\'")}', this)">${getExerciseIcon(ex)} ${ex}</button>`;
+    });
+  }
+}
+
+function onExerciseSearchInput(val) {
+  exerciseSearchQuery = val;
+  renderExerciseChips();
+}
+
+function filterExercisesByCategory(cat, el) {
+  activeExerciseCategory = cat;
+  exerciseSearchQuery = '';
+  const inp = $('custom-exercise-input');
+  if (inp) inp.value = '';
+  document.querySelectorAll('#ex-category-chips .chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderExerciseChips();
 }
 
 function selectExercise(name, el) {
-  document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
   workout.exercise = name;
-  $('selected-ex-name').textContent = name;
-  $('selected-exercise-display').style.display = 'flex';
-  $('custom-exercise-input').value = '';
+  const icon = getExerciseIcon(name);
+  const nameEl = $('selected-ex-name');
+  const iconEl = $('selected-ex-icon');
+  const disp = $('selected-exercise-display');
+  
+  if (nameEl) nameEl.textContent = name;
+  if (iconEl) iconEl.textContent = icon;
+  if (disp) disp.style.display = 'flex';
+  
+  document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  
   updateE1RM();
 }
 
 function selectCustomExercise() {
-  const v = $('custom-exercise-input').value.trim();
-  if (!v) return;
+  const inp = $('custom-exercise-input');
+  const v = (inp ? inp.value : '').trim();
+  if (!v) {
+    showToast('⚠️ Введи название упражнения в поле поиска!');
+    return;
+  }
+  
+  if (!DB.custom_exercises) DB.custom_exercises = [];
+  if (!DB.custom_exercises.some(c => c.toLowerCase() === v.toLowerCase())) {
+    DB.custom_exercises.unshift(v);
+  }
+  
   workout.exercise = v;
-  $('selected-ex-name').textContent = v;
-  $('selected-exercise-display').style.display = 'flex';
-  document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => c.classList.remove('active'));
+  const nameEl = $('selected-ex-name');
+  const iconEl = $('selected-ex-icon');
+  const disp = $('selected-exercise-display');
+  
+  if (nameEl) nameEl.textContent = v;
+  if (iconEl) iconEl.textContent = getExerciseIcon(v);
+  if (disp) disp.style.display = 'flex';
+  
+  if (inp) inp.value = '';
+  exerciseSearchQuery = '';
+  activeExerciseCategory = 'recent';
+  document.querySelectorAll('#ex-category-chips .chip').forEach(c => c.classList.remove('active'));
+  const recBtn = document.querySelector('#ex-category-chips .chip:first-child');
+  if (recBtn) recBtn.classList.add('active');
+  
+  saveData();
+  renderExerciseChips();
+  updateE1RM();
+  showToast(`✅ Упражнение «${v}» выбрано и добавлено в базу!`);
 }
 
 function clearExercise() {
   workout.exercise = '';
-  $('selected-exercise-display').style.display = 'none';
+  const disp = $('selected-exercise-display');
+  if (disp) disp.style.display = 'none';
+  document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => c.classList.remove('active'));
+  updateE1RM();
 }
 
 function selectDate(type, el) {
@@ -689,14 +926,17 @@ function selectExerciseByName(name) {
   workout.exercise = name;
   const disp = $('selected-exercise-display');
   const nameSpan = $('selected-ex-name');
+  const iconSpan = $('selected-ex-icon');
   if (disp && nameSpan) {
     nameSpan.textContent = name;
+    if (iconSpan) iconSpan.textContent = getExerciseIcon(name);
     disp.style.display = 'flex';
   }
   document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => {
-    if (c.textContent.trim().toLowerCase() === name.trim().toLowerCase()) c.classList.add('active');
+    if (c.textContent.trim().toLowerCase().includes(name.trim().toLowerCase())) c.classList.add('active');
     else c.classList.remove('active');
   });
+  updateE1RM();
 }
 
 function prefillAndGoToWorkout(exName, targetWeight, targetReps) {
