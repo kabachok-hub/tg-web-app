@@ -184,7 +184,7 @@ function initUI() {
   $('avatar-letter').textContent = (user && user.first_name ? user.first_name : 'A')[0].toUpperCase();
   renderDashboard();
   renderExerciseChips();
-  renderQuickWeights();
+  syncWorkoutInputs(50, 8);
   setupSVGGradient();
 }
 
@@ -633,92 +633,94 @@ function setCustomDate() {
 }
 
 function renderQuickWeights() {
-  const ws = DB.workouts || [];
-  const hist = [...new Set(ws.map(w => w.weight).filter(w => w > 0))].sort((a, b) => a - b).slice(-6);
-  if (!hist.length) return;
   const qw = $('quick-weights');
-  qw.innerHTML = '';
-  hist.forEach(w => { qw.innerHTML += `<button class="chip" onclick="setWeight(${w})">${w}</button>`; });
+  if (qw) qw.innerHTML = '';
+}
+
+// ═══════════════════════ SYNCHRONIZED INPUT CONTROLS (0-1000 KG & REPS SLIDER) ═══════════════════════
+function syncWorkoutInputs(weight, reps) {
+  if (weight !== undefined) {
+    const wNum = Math.max(0, Math.min(1000, parseFloat(weight) || 0));
+    workout.weight = wNum;
+    const wInp = $('weight-input');
+    const wSld = $('weight-slider');
+    if (wInp && document.activeElement !== wInp) wInp.value = wNum;
+    if (wSld) wSld.value = wNum;
+  }
+  if (reps !== undefined) {
+    workout.reps = String(reps);
+    const parsed = parseReps(workout.reps);
+    const rInp = $('reps-input');
+    const rSld = $('reps-slider');
+    if (rInp && document.activeElement !== rInp) rInp.value = workout.reps;
+    if (rSld) rSld.value = Math.max(1, Math.min(100, parsed.reps || 8));
+  }
+  updateE1RM();
 }
 
 function updateWeight(v) {
-  workout.weight = +v;
-  $('weight-input').value = +v === 0 ? '0' : v;
-  updateE1RM();
-}
-
-function adjustWeight(delta) {
-  const nw = Math.max(0, Math.round((workout.weight + delta) * 10) / 10);
-  workout.weight = nw;
-  $('weight-input').value = nw;
-  $('weight-slider').value = nw;
-  updateE1RM();
-}
-
-function setWeight(v) {
-  workout.weight = v;
-  $('weight-input').value = v;
-  $('weight-slider').value = v;
-  updateE1RM();
+  syncWorkoutInputs(v, undefined);
 }
 
 function updateWeightFromInput(v) {
-  const num = parseFloat(v);
-  workout.weight = isNaN(num) ? 0 : num;
-  $('weight-slider').value = workout.weight;
-  updateE1RM();
+  syncWorkoutInputs(v, undefined);
+}
+
+function adjustWeight(delta) {
+  const cur = parseFloat($('weight-input') ? $('weight-input').value : workout.weight) || 0;
+  const nw = Math.max(0, Math.min(1000, Math.round((cur + delta) * 10) / 10));
+  syncWorkoutInputs(nw, undefined);
 }
 
 function toggleNoWeight() {
   const cb = $('no-weight-cb');
-  if (cb.checked) { 
-    workout.weight = 0; 
-    $('weight-input').value = '0'; 
+  if (cb && cb.checked) { 
+    syncWorkoutInputs(0, undefined);
     $('weight-input').disabled = true; 
     $('weight-slider').disabled = true; 
   } else { 
-    workout.weight = 80; 
-    $('weight-input').value = '80'; 
+    syncWorkoutInputs(50, undefined);
     $('weight-input').disabled = false; 
     $('weight-slider').disabled = false; 
   }
-  updateE1RM();
 }
 
-function adjustReps(delta) {
-  const parsed = parseReps(workout.reps);
-  let newReps = Math.max(0.5, Math.min(50, parsed.reps + delta));
-  if (newReps % 1 === 0) newReps = parseInt(newReps);
-  if (parsed.rir !== null) {
-    workout.reps = `${newReps}+${parsed.rir}`;
-  } else {
-    workout.reps = String(newReps);
-  }
-  $('reps-input').value = workout.reps;
-  updateE1RM();
-}
-
-function setReps(v) {
-  workout.reps = String(v);
-  $('reps-input').value = v;
-  updateE1RM();
+function updateRepsFromSlider(v) {
+  syncWorkoutInputs(undefined, v);
 }
 
 function updateRepsFromInput(v) {
-  workout.reps = v;
-  updateE1RM();
+  syncWorkoutInputs(undefined, v);
+}
+
+function adjustReps(delta) {
+  const cur = parseInt($('reps-input') ? $('reps-input').value : workout.reps) || 8;
+  const nr = Math.max(1, Math.min(100, cur + delta));
+  syncWorkoutInputs(undefined, nr);
 }
 
 function selectRPE(v, el) {
   document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   workout.rpe = v;
+}
+
+function toggleSetRPE(setIndex) {
+  if (!workout.sets[setIndex]) return;
+  const cur = workout.sets[setIndex].rpe;
+  let next = 'Легко';
+  if (cur === 'Легко') next = 'Средне';
+  else if (cur === 'Средне') next = 'Тяжело';
+  else next = 'Легко';
+  workout.sets[setIndex].rpe = next;
+  workout.sets[setIndex].diff = next;
+  renderSetsLog();
 }
 
 let currentRIR = 0;
 function selectRIR(val, el) {
   document.querySelectorAll('.rir-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   currentRIR = parseInt(val);
 }
 function resetRIR() {
@@ -729,61 +731,63 @@ function resetRIR() {
 }
 
 function updateE1RM() {
-  const parsed = parseReps(workout.reps);
-  const e = workout.weight > 0 && parsed.reps > 0 ? epley(workout.weight, workout.reps) : null;
-  $('e1rm-val').textContent = e ? e + ' кг' : '—';
+  const wInput = $('weight-input');
+  const rInput = $('reps-input');
+  const wVal = wInput ? (parseFloat(wInput.value) || 0) : (workout.weight || 0);
+  const rVal = rInput ? rInput.value : (workout.reps || '8');
+  const parsed = parseReps(rVal);
+  const e = wVal > 0 && parsed.reps > 0 ? epley(wVal, parsed.reps) : null;
+  const eValEl = $('e1rm-val');
+  if (eValEl) eValEl.textContent = e ? e + ' кг' : '—';
 }
 
 function getDateFromUI() {
-  // Считываем дату напрямую из UI, чтобы избежать рассинхрона между DOM и JS-переменной
   const chips = document.querySelectorAll('.date-chips .chip');
   let activeIdx = 0;
   chips.forEach((c, i) => { if (c.classList.contains('active')) activeIdx = i; });
   if (activeIdx === 0) {
-    // "Сегодня"
     return fmtDate(new Date());
   } else if (activeIdx === 1) {
-    // "Вчера"
     const d = new Date(); d.setDate(d.getDate() - 1); return fmtDate(d);
   } else {
-    // "Другая" — берём из input
     const v = $('custom-date-input').value;
     if (v) {
       const [y, m, d] = v.split('-');
       return `${d}.${m}.${y}`;
     }
-    return fmtDate(new Date()); // фоллбэк
+    return fmtDate(new Date());
   }
 }
 
 function addSet() {
-  if (!workout.exercise) { showToast('❌ Выбери упражнение!'); return; }
-  // Считываем дату напрямую из UI-чипов (не из JS-переменной!)
+  if (!workout.exercise) { showToast('❌ Сначала выбери упражнение!'); return; }
   workout.date = getDateFromUI();
-  // Считываем текущий RPE прямо из активной кнопки в DOM
+  
+  // Read exact current truth from DOM inputs
+  const wInput = $('weight-input');
+  const rInput = $('reps-input');
+  const actualWeight = wInput ? (parseFloat(wInput.value) || 0) : (workout.weight || 0);
+  const repsVal = rInput ? rInput.value : (workout.reps || '8');
+  const parsed = parseReps(repsVal);
+  
   const activeRpeBtn = document.querySelector('.rpe-btn.active');
-  let currentRpe = workout.rpe;
+  let currentRpe = workout.rpe || 'Легко';
   if (activeRpeBtn) {
     if (activeRpeBtn.classList.contains('green')) currentRpe = 'Легко';
     else if (activeRpeBtn.classList.contains('yellow')) currentRpe = 'Средне';
     else if (activeRpeBtn.classList.contains('red')) currentRpe = 'Тяжело';
   }
-  workout.rpe = currentRpe;
   
-  // Считываем повторения прямо из поля ввода
-  const repsVal = $('reps-input').value;
-  const parsed = parseReps(repsVal);
   const set = { 
     exercise: workout.exercise, 
     date: workout.date, 
-    weight: workout.weight, 
+    weight: actualWeight, 
     reps: parsed.reps, 
     rpe: currentRpe, 
     diff: currentRpe, 
     set_num: workout.sets.length + 1 
   };
   
-  // Если в текстовом вводе не указан '+', берем из RIR кнопок
   if (parsed.rir !== null) {
     set.rir = parsed.rir;
   } else if (currentRIR > 0) {
@@ -793,20 +797,47 @@ function addSet() {
   workout.sets.push(set);
   renderSetsLog();
   $('save-btn').style.display = 'block';
-  showToast(`✅ Подход ${workout.sets.length} добавлен`);
+  showToast(`✅ Сет ${workout.sets.length} (${actualWeight}кг × ${parsed.reps}) добавлен [${currentRpe}]!`);
   
-  // Сбрасываем RIR на дефолтный (Отказ)
+  // Keep inputs synced
+  syncWorkoutInputs(actualWeight, repsVal);
   resetRIR();
 }
 
 function renderSetsLog() {
   const log = $('sets-log');
-  if (!workout.sets.length) { log.innerHTML = '<p class="empty-state">Ещё нет подходов</p>'; return; }
+  if (!log) return;
+  if (!workout.sets.length) { 
+    log.innerHTML = '<p class="empty-state">Ещё нет добавленных подходов</p>'; 
+    return; 
+  }
+  
   log.innerHTML = workout.sets.map((s, i) => {
     const repsClean = formatRepsClean(s);
-    const e = s.weight > 0 ? `1ПМ≈${epley(s.weight, s.reps)}кг` : 'без веса';
-    const wt = s.weight > 0 ? `${s.weight}кг × ${repsClean}` : `(без веса) × ${repsClean}`;
-    return `<div class="set-item"><span class="set-num">${i + 1}-й подход</span><span class="set-data">${wt}</span><span class="set-1rm">${e}</span><button class="set-del" onclick="delSet(${i})">🗑</button></div>`;
+    const e = s.weight > 0 ? `1ПМ ≈ ${epley(s.weight, s.reps)} кг` : 'без веса';
+    const wt = s.weight > 0 ? `${s.weight} кг × ${repsClean}` : `(без веса) × ${repsClean}`;
+    const rpeBadge = s.rpe === 'Тяжело' 
+      ? '<span class="badge" style="background:rgba(239,68,68,0.25); color:#fca5a5; border:1px solid rgba(239,68,68,0.4); cursor:pointer; padding:2px 8px; font-size:0.7rem;" onclick="toggleSetRPE('+i+')" title="Нажми, чтобы сменить RPE">🔴 Тяжело</span>'
+      : s.rpe === 'Средне'
+      ? '<span class="badge" style="background:rgba(234,179,8,0.25); color:#fde047; border:1px solid rgba(234,179,8,0.4); cursor:pointer; padding:2px 8px; font-size:0.7rem;" onclick="toggleSetRPE('+i+')" title="Нажми, чтобы сменить RPE">🟡 Средне</span>'
+      : '<span class="badge" style="background:rgba(16,185,129,0.25); color:#6ee7b7; border:1px solid rgba(16,185,129,0.4); cursor:pointer; padding:2px 8px; font-size:0.7rem;" onclick="toggleSetRPE('+i+')" title="Нажми, чтобы сменить RPE">🟢 Легко</span>';
+      
+    const rirInfo = (s.rir !== undefined && s.rir !== null) ? `<small style="color:var(--text2); font-size:0.7rem;">(RIR ${s.rir})</small>` : '';
+
+    return `
+      <div class="set-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-bottom:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px;">
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="set-num" style="font-weight:700; color:var(--text2); font-size:0.8rem;">#${i + 1}</span>
+            <span class="set-data" style="font-weight:800; font-size:0.92rem; color:var(--text);">${wt}</span>
+            ${rpeBadge}
+            ${rirInfo}
+          </div>
+          <span class="set-1rm" style="font-size:0.72rem; color:var(--accent3);">${e}</span>
+        </div>
+        <button class="set-del" onclick="delSet(${i})" style="background:none; border:none; color:var(--text2); cursor:pointer; font-size:1.1rem; padding:4px;" title="Удалить подход">🗑</button>
+      </div>
+    `;
   }).join('');
 }
 
@@ -905,20 +936,24 @@ async function saveWorkout() {
     showToast('✅ Тренировка сохранена!');
   }
 
-  // Сброс состояния: упражнение и подходы сбрасываются, дата ОСТАЁТСЯ как есть
+  // Сброс состояния: упражнение и подходы сбрасываются, дата, вес и повторения сохраняются синхронно
   const keepDate = getDateFromUI();
-  workout = { exercise: '', date: keepDate, sets: [], rpe: 'Легко', weight: 80, reps: 8 };
+  const keepWeight = parseFloat($('weight-input') ? $('weight-input').value : 50) || 50;
+  const keepReps = $('reps-input') ? $('reps-input').value : '8';
+  workout = { exercise: '', date: keepDate, sets: [], rpe: 'Легко', weight: keepWeight, reps: keepReps };
+  
   // Сбрасываем кнопки сложности в UI на "Легко"
   document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('active'));
   const greenBtn = document.querySelector('.rpe-btn.green');
   if (greenBtn) greenBtn.classList.add('active');
+  
   renderSetsLog();
   resetRIR();
   $('save-btn').style.display = 'none';
   $('selected-exercise-display').style.display = 'none';
   document.querySelectorAll('#exercise-chips .ex-chip').forEach(c => c.classList.remove('active'));
+  syncWorkoutInputs(keepWeight, keepReps);
   renderExerciseChips();
-  renderQuickWeights();
   renderDashboard();
 }
 
