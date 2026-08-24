@@ -2707,18 +2707,43 @@ async function sendAiCoachMessage() {
 
   if (key) {
     try {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: contextStr }] }]
-        })
-      });
-      const data = await resp.json();
-      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      // Primary: Heaviest Flagship Model (Gemini 2.0 Pro Experimental / Thinking)
+      const modelsToTry = [
+        'gemini-2.0-pro-exp-02-05',
+        'gemini-2.0-flash-thinking-exp-01-21',
+        'gemini-2.0-flash'
+      ];
+      let data = null;
+      let lastErrMsg = '';
+
+      for (const m of modelsToTry) {
+        try {
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: contextStr }] }]
+            })
+          });
+          const resJson = await resp.json();
+          if (resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content) {
+            data = resJson;
+            break; // Success with heavy flagship model!
+          } else if (resJson.error) {
+            lastErrMsg = resJson.error.message;
+            if (resJson.error.code === 400 && resJson.error.message.includes('API key not valid')) {
+              break; // Stop immediately if key itself is invalid
+            }
+          }
+        } catch (e) {
+          lastErrMsg = e.message;
+        }
+      }
+
+      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
         replyText = data.candidates[0].content.parts[0].text;
-      } else if (data.error) {
-        replyText = `⚠️ Ошибка Gemini API: ${data.error.message || 'Проверьте API-ключ'}`;
+      } else if (lastErrMsg) {
+        replyText = `⚠️ Ошибка Gemini API: ${lastErrMsg}`;
       }
     } catch (err) {
       replyText = `⚠️ Ошибка сети при запросе к Gemini: ${err.message}`;
