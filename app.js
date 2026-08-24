@@ -2707,8 +2707,13 @@ async function sendAiCoachMessage() {
 
   if (key) {
     try {
-      // Primary: Heaviest Flagship Model (Gemini 2.0 Pro Experimental / Thinking)
+      // Flagship & Modern Gemini Models (Auto-fallback)
       const modelsToTry = [
+        'gemini-3.6-flash',
+        'gemini-3.7-flash',
+        'gemini-3.6-pro',
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
         'gemini-2.0-pro-exp-02-05',
         'gemini-2.0-flash-thinking-exp-01-21',
         'gemini-2.0-flash'
@@ -2728,7 +2733,7 @@ async function sendAiCoachMessage() {
           const resJson = await resp.json();
           if (resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content) {
             data = resJson;
-            break; // Success with heavy flagship model!
+            break; // Success!
           } else if (resJson.error) {
             lastErrMsg = resJson.error.message;
             if (resJson.error.code === 400 && resJson.error.message.includes('API key not valid')) {
