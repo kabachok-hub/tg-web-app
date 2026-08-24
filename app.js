@@ -190,9 +190,9 @@ function initUI() {
   const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
   $('greeting').textContent = `💪 Привет, ${user && user.first_name ? user.first_name : 'Атлет'}!`;
   $('today-date').textContent = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-  $('avatar-letter').textContent = (user && user.first_name ? user.first_name : 'A')[0].toUpperCase();
   renderDashboard();
   renderExerciseChips();
+  renderDiary(0);
   syncWorkoutInputs(50, 8);
   setupSVGGradient();
 }
@@ -1008,16 +1008,34 @@ function prefillAndGoToWorkout(exName, targetWeight, targetReps) {
 
 // ── Diary ──
 function filterDiary(days, el) {
-  diaryDays = days; // Запоминаем выбранный фильтр
+  diaryDays = days;
   document.querySelectorAll('.diary-filter .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   renderDiary(days);
 }
 
 function renderDiary(days) {
+  if (days === undefined || days === null) days = (diaryDays !== undefined ? diaryDays : 0);
+  diaryDays = days;
+
+  // Sync active filter button state
+  const filterChips = document.querySelectorAll('.diary-filter .chip');
+  if (filterChips && filterChips.length >= 4) {
+    filterChips.forEach(c => c.classList.remove('active'));
+    if (days === 7) filterChips[0].classList.add('active');
+    else if (days === 30) filterChips[1].classList.add('active');
+    else if (days === 90) filterChips[2].classList.add('active');
+    else filterChips[3].classList.add('active');
+  }
+
   const ws = DB.workouts || [];
   const cutoff = days > 0 ? new Date(Date.now() - days * 24 * 3600 * 1000) : new Date(0);
-  const filtered = ws.filter(w => { const d = parseDate(w.date); return d && d >= cutoff; });
+  const filtered = ws.filter(w => {
+    if (!w || !w.date) return false;
+    const d = parseDate(w.date);
+    return d ? d >= cutoff : true;
+  });
+
   // Group by date → exercise
   const byDate = {};
   filtered.forEach(w => {
@@ -1031,14 +1049,17 @@ function renderDiary(days) {
     const r = w.rpe || w.diff || 'Легко';
     if (byDate[d][ex].rpe === null || (rpeRank[r] || 0) > (rpeRank[byDate[d][ex].rpe] || 0)) byDate[d][ex].rpe = r;
   });
+
   // Compute all-time 1RM records
   const allRecords = {};
   ws.filter(w => w.weight > 0).forEach(w => {
     const e = epley(w.weight, w.reps);
     if (!allRecords[w.exercise] || e > allRecords[w.exercise]) allRecords[w.exercise] = e;
   });
+
   const list = $('diary-list');
-  const dates = Object.keys(byDate).sort((a, b) => parseDate(b) - parseDate(a));
+  if (!list) return;
+  const dates = Object.keys(byDate).sort((a, b) => (parseDate(b) || 0) - (parseDate(a) || 0));
   if (!dates.length) { list.innerHTML = '<p class="empty-state">Нет тренировок за период</p>'; return; }
   list.innerHTML = dates.map(date => {
     const exs = byDate[date];
