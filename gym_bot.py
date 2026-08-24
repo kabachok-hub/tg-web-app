@@ -95,8 +95,7 @@ except ImportError as e:
 
 # ── ТОКЕН И ПРОКСИ (Автонастройка для PythonAnywhere) ──────────
 TOKEN = os.environ.get('BOT_TOKEN', '8793508863:AAGt5pqrfPY3tmA4XhleEeOcJUstPQJp9aM')
-import base64
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or base64.b64decode('QVEuQWI4Uk42S3Q4cGR5Y09lV2VqQTRuWlVDX0NaUTFqUXI1TTBDSU5oM0MxMHEtYmR4eEE=').decode('utf-8')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 import telebot.apihelper as _apihelper
 if os.path.exists('/home/kABACH0k') or 'PYTHONANYWHERE_DOMAIN' in os.environ or 'PYTHONANYWHERE_SITE' in os.environ:
