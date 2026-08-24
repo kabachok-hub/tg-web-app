@@ -1331,3 +1331,50 @@ svg defs { display: block; }
   box-shadow: 0 4px 14px rgba(0,176,155,0.4);
 }
 
+/* ── AI Coach Prompts Carousel (Smooth Touch & Mouse Scroll) ── */
+.ai-prompts-carousel {
+  display: flex !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 4px 4px 8px 4px !important;
+  margin: 2px 0 6px 0 !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(124, 92, 255, 0.4) transparent !important;
+  touch-action: pan-x !important;
+  cursor: grab;
+}
+.ai-prompts-carousel:active {
+  cursor: grabbing;
+}
+.ai-prompts-carousel::-webkit-scrollbar {
+  height: 5px !important;
+}
+.ai-prompts-carousel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+.ai-prompts-carousel::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 255, 0.4);
+  border-radius: 4px;
+}
+.ai-prompts-carousel .chip {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  font-size: 0.72rem !important;
+  padding: 6px 12px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: var(--text) !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+}
+.ai-prompts-carousel .chip:hover,
+.ai-prompts-carousel .chip:active {
+  background: rgba(124, 92, 255, 0.25) !important;
+  border-color: var(--accent) !important;
+  transform: translateY(-1px);
+}
+
