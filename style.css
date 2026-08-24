@@ -541,6 +541,22 @@ body {
   border-right: 1px solid var(--border);
   padding-right: 6px;
 }
+.diary-set-rpe-dot {
+  font-size: 0.76rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+  user-select: none;
+}
+.diary-set-rpe-dot:hover {
+  transform: scale(1.3);
+}
+.diary-set-pill-wt {
+  font-weight: 700;
+  color: var(--text);
+}
 .diary-set-pill-del {
   display: inline-flex;
   align-items: center;
