@@ -554,11 +554,15 @@
         </div>
       </div>
 
-      <!-- Quick prompts -->
-      <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;" class="day-chips-scroll">
-        <button class="chip" style="white-space:nowrap; font-size:0.7rem;" onclick="setCoachPrompt('Проанализируй мои силовые и восстановление: что делать на следующей тренировке?')">😴 Моё восстановление</button>
-        <button class="chip" style="white-space:nowrap; font-size:0.7rem;" onclick="setCoachPrompt('Как преодолеть плато в жиме лёжа и почему вес стоит?')">💪 Плато в жиме</button>
-        <button class="chip" style="white-space:nowrap; font-size:0.7rem;" onclick="setCoachPrompt('Сколько белка и калорий мне нужно для роста мышц при тренировках 3 дня в неделю?')">🥩 Белок и питание</button>
+      <!-- Quick prompts Carousel -->
+      <div class="ai-prompts-carousel" id="ai-prompts-carousel">
+        <button class="chip" onclick="setCoachPrompt('Проанализируй мои силовые и восстановление: что делать на следующей тренировке?')">😴 Моё восстановление</button>
+        <button class="chip" onclick="setCoachPrompt('Как преодолеть плато в жиме лёжа и почему вес стоит?')">💪 Плато в жиме</button>
+        <button class="chip" onclick="setCoachPrompt('Сколько белка и калорий мне нужно для роста мышц при тренировках 3 дня в неделю?')">🥩 Белок и питание</button>
+        <button class="chip" onclick="setCoachPrompt('Как правильно размяться и подвестись к рабочим весам по науке?')">⚡ Разминка и лесенка</button>
+        <button class="chip" onclick="setCoachPrompt('Чем безопасно заменить становую тягу или присед, если устала спина?')">🧬 Замена упражнений</button>
+        <button class="chip" onclick="setCoachPrompt('Как ускорить восстановление ЦНС и связок после тяжелой тренировки?')">🧘 Отдых и ЦНС</button>
+        <button class="chip" onclick="setCoachPrompt('Как правильно принимать креатин и сколько воды пить в день?')">💊 Креатин и добавки</button>
       </div>
 
       <!-- Chat History -->
