@@ -2693,6 +2693,28 @@ function openAiCoachModal() {
   if (m) m.style.display = 'flex';
   const inp = $('gemini-api-key-input');
   if (inp && DB.gemini_key) inp.value = DB.gemini_key;
+  setupCarouselDrag();
+}
+
+function setupCarouselDrag() {
+  const slider = $('ai-prompts-carousel');
+  if (!slider || slider._hasDrag) return;
+  slider._hasDrag = true;
+  let isDown = false, startX, scrollLeft;
+  slider.addEventListener('mousedown', (e) => {
+    isDown = true;
+    startX = e.pageX - slider.offsetLeft;
+    scrollLeft = slider.scrollLeft;
+  });
+  slider.addEventListener('mouseleave', () => { isDown = false; });
+  slider.addEventListener('mouseup', () => { isDown = false; });
+  slider.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - slider.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    slider.scrollLeft = scrollLeft - walk;
+  });
 }
 
 function closeAiCoachModal() {
