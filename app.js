@@ -653,7 +653,7 @@ function syncWorkoutInputs(weight, reps) {
     const rInp = $('reps-input');
     const rSld = $('reps-slider');
     if (rInp && document.activeElement !== rInp) rInp.value = workout.reps;
-    if (rSld) rSld.value = Math.max(1, Math.min(1000, parsed.reps || 8));
+    if (rSld) rSld.value = Math.max(1, Math.min(50, parsed.reps || 8));
   }
   updateE1RM();
 }
@@ -695,7 +695,7 @@ function updateRepsFromInput(v) {
 
 function adjustReps(delta) {
   const cur = parseInt($('reps-input') ? $('reps-input').value : workout.reps) || 8;
-  const nr = Math.max(1, Math.min(1000, cur + delta));
+  const nr = Math.max(1, Math.min(50, cur + delta));
   syncWorkoutInputs(undefined, nr);
 }
 
