@@ -3,7 +3,7 @@ const tg = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 const API = 'https://kABACh0k.pythonanywhere.com/api'; // замени на URL своего сервера
-const DEFAULT_GEMINI_KEY = typeof atob === 'function' ? atob('QVEuQWI4Uk42S3Q4cGR5Y09lV2VqQTRuWlVDX0NaUTFqUXI1TTBDSU5oM0MxMHEtYmR4eEE=') : '';
+const DEFAULT_GEMINI_KEY = '';
 let DB = { workouts: [], profile: {}, body: [], program: null };
 let currentTab = 'dashboard';
 let workout = { exercise: '', date: '', sets: [], rpe: 'Легко', weight: 50, reps: 8 };
