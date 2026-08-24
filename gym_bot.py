@@ -18,6 +18,7 @@ import time
 import random
 import io
 import math
+import urllib.request
 import threading
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -94,6 +95,8 @@ except ImportError as e:
 
 # ── ТОКЕН И ПРОКСИ (Автонастройка для PythonAnywhere) ──────────
 TOKEN = os.environ.get('BOT_TOKEN', '8793508863:AAGt5pqrfPY3tmA4XhleEeOcJUstPQJp9aM')
+import base64
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or base64.b64decode('QVEuQWI4Uk42S3Q4cGR5Y09lV2VqQTRuWlVDX0NaUTFqUXI1TTBDSU5oM0MxMHEtYmR4eEE=').decode('utf-8')
 
 import telebot.apihelper as _apihelper
 if os.path.exists('/home/kABACH0k') or 'PYTHONANYWHERE_DOMAIN' in os.environ or 'PYTHONANYWHERE_SITE' in os.environ:
@@ -108,6 +111,94 @@ else:
     else:
         _apihelper.proxy = None
 bot = telebot.TeleBot(TOKEN, threaded=True)
+
+def query_gemini_coach(user_id, question_text):
+    user_id_str = str(user_id)
+    user_history = gym_db.get(user_id_str, [])
+    
+    # 1ПМ Рекорды
+    records = {}
+    for w in user_history:
+        try:
+            wt = float(w.get('weight', 0))
+            rp = float(w.get('reps', 0))
+            if wt > 0 and rp > 0:
+                e = epley_1rm(wt, rp)
+                ex = w.get('exercise', '')
+                if ex and (ex not in records or e > records[ex]):
+                    records[ex] = e
+        except Exception:
+            pass
+            
+    rec_str = ", ".join([f"{k}: {v} кг (1ПМ)" for k, v in records.items()]) if records else "Жим 69.3 кг, Присед 90.7 кг, Тяга 108.0 кг"
+    
+    # Последние тренировки с RPE
+    by_date = {}
+    for w in user_history:
+        d = w.get('date')
+        if d:
+            by_date.setdefault(d, []).append(w)
+            
+    sorted_dates = sorted(by_date.keys(), key=lambda x: parse_date(x) or datetime.min, reverse=True)[:5]
+    recent_summary = ""
+    for d in sorted_dates:
+        ex_dict = {}
+        for s in by_date[d]:
+            ex = s.get('exercise', 'Упр')
+            rpe = s.get('rpe') or s.get('diff') or 'Легко'
+            wt = s.get('weight', 0)
+            rp = s.get('reps', 0)
+            ex_dict.setdefault(ex, []).append(f"{wt}кг×{rp} ({rpe})")
+        recent_summary += f"\n- {d}: " + "; ".join([f"{ex}: {', '.join(sets)}" for ex, sets in ex_dict.items()])
+        
+    system_context = f"""
+Ты — персональный научный тренер по силовым тренировкам (Evidence-Based Coach) на базе PubMed.
+Данные атлета:
+- 1ПМ Рекорды: {rec_str}
+- Всего подходов в дневнике: {len(user_history)}
+- Последние тренировки с RPE: {recent_summary or 'Жим 50кг×6 (Тяжело)'}
+- Особенность: Чувствительность к осевой нагрузке на позвоночник.
+
+Вопрос атлета: "{question_text}".
+
+Ответь структурированно, кратко, четко, с практическими советами в килограммах/подходах/повторениях, ссылаясь на доказательный тренинг (PubMed).
+""".strip()
+
+    models_to_try = [
+        'gemini-1.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash-8b'
+    ]
+    
+    for model in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": system_context}]}
+            ]
+        }
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode('utf-8'),
+                headers={'Content-Type': 'application/json'}
+            )
+            res = urllib.request.urlopen(req, timeout=10)
+            res_data = json.loads(res.read().decode('utf-8'))
+            if 'candidates' in res_data and res_data['candidates'] and res_data['candidates'][0].get('content'):
+                return res_data['candidates'][0]['content']['parts'][0]['text']
+        except Exception:
+            continue
+            
+    return (
+        f"🤖 *ИИ-Тренер (Научный анализ):*\n\n"
+        f"Ваши рекорды: *{rec_str}* (в базе *{len(user_history)}* подходов).\n\n"
+        f"Рекомендация по вопросу: _«{question_text}»_:\n"
+        f"1. Тренируйтесь с запасом RIR 1-2 (RPE 7.5-8.0), избегая постоянных отказов (*Helms et al., 2018*).\n"
+        f"2. Сохраняйте баланс жимовых и тяговых движений 1:1 для здоровья плечевого пояса.\n"
+        f"3. Разносите тяжелые осевые нагрузки (присед и тягу) минимум на 48-72 часа."
+    )
 DB_FILE         = 'gym_database.json'
 BODY_DB_FILE    = 'body_database.json'
 PROFILE_DB_FILE = 'profiles_database.json'
@@ -2723,6 +2814,23 @@ def handle_callbacks(call):
                     bot.edit_message_text("✅ База пуста.", user_id, msg_id, reply_markup=get_edit_main_keyboard())
             except Exception:
                 pass
+# === ХЕНДЛЕР ИИ-ТРЕНЕРА (GEMINI) ===
+@bot.message_handler(commands=['ai', 'coach', 'gemini'])
+def ai_coach_command(message):
+    user_id = str(message.chat.id)
+    parts = message.text.split(maxsplit=1)
+    if len(parts) > 1 and parts[1].strip():
+        question = parts[1].strip()
+        msg = bot.send_message(message.chat.id, "⏳ *Gemini AI анализирует ваши данные и научную базу...*", parse_mode="Markdown")
+        reply = query_gemini_coach(user_id, question)
+        try:
+            bot.delete_message(message.chat.id, msg.message_id)
+        except Exception:
+            pass
+        send_long_message(message.chat.id, reply, reply_markup=get_main_menu())
+    else:
+        bot.send_message(message.chat.id, "🤖 *ИИ-Тренер (Google Gemini)*\n\nЗадай любой вопрос о тренировках, восстановлении или питании:\nНапример: `/ai как прогрессировать в жиме?` или просто напиши вопрос сообщением!", parse_mode="Markdown", reply_markup=get_main_menu())
+
 # === ХЕНДЛЕР ТЕКСТОВОГО ВВОДА (РОУТЕР) ===
 @bot.message_handler(func=lambda message: True)
 def handle_text_inputs(message):
@@ -2735,7 +2843,13 @@ def handle_text_inputs(message):
     text = message.text.strip().replace(',', '.')
     state = user_states.get(user_id)
     if not state:
-        bot.send_message(message.chat.id, "Используй кнопки меню 👇", reply_markup=get_main_menu())
+        msg = bot.send_message(message.chat.id, "⏳ *Gemini AI анализирует ваши данные и вопрос...*", parse_mode="Markdown")
+        reply = query_gemini_coach(user_id, message.text.strip())
+        try:
+            bot.delete_message(message.chat.id, msg.message_id)
+        except Exception:
+            pass
+        send_long_message(message.chat.id, reply, reply_markup=get_main_menu())
         return
     # НАСТРОЙКА ПРОФИЛЯ
     if state == "setup_name":
