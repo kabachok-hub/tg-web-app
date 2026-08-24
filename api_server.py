@@ -51,11 +51,18 @@ def get_data():
                 db = json.load(f)
         result['workouts'] = db.get(str(uid), [])
 
-    # Загружаем профиль
+    # Загружаем профиль и историю AI
     if os.path.exists(PROFILE_FILE):
-        with open(PROFILE_FILE, 'r', encoding='utf-8') as f:
-            pdb = json.load(f)
-        result['profile'] = pdb.get(str(uid), {})
+        try:
+            with open(PROFILE_FILE, 'r', encoding='utf-8') as f:
+                pdb = json.load(f)
+            u_prof = pdb.get(str(uid), {})
+            if isinstance(u_prof, dict):
+                result['profile'] = u_prof.get('profile', u_prof)
+                result['ai_chat_history'] = u_prof.get('ai_chat_history', [])
+                result['gemini_key'] = u_prof.get('gemini_key', '')
+        except Exception:
+            pass
 
     # Загружаем программу тренировок
     if os.path.exists(PROGRAM_FILE):
@@ -152,6 +159,32 @@ def save_data():
             bdb[uid] = new_body
             with open(BODY_FILE, 'w', encoding='utf-8') as f:
                 json.dump(bdb, f, ensure_ascii=False, indent=2)
+
+        # Сохранение профиля и истории AI чата
+        new_profile = data_payload.get('profile', {}) if isinstance(data_payload, dict) else {}
+        ai_chat_history = data_payload.get('ai_chat_history', []) if isinstance(data_payload, dict) else []
+        gemini_key = data_payload.get('gemini_key', '') if isinstance(data_payload, dict) else ''
+        
+        if os.path.exists(PROFILE_FILE):
+            try:
+                with open(PROFILE_FILE, 'r', encoding='utf-8') as f:
+                    pdb = json.load(f)
+            except Exception:
+                pdb = {}
+        else:
+            pdb = {}
+            
+        if uid not in pdb:
+            pdb[uid] = {}
+        if isinstance(pdb[uid], dict):
+            if new_profile:
+                pdb[uid]['profile'] = new_profile
+            if ai_chat_history:
+                pdb[uid]['ai_chat_history'] = ai_chat_history
+            if gemini_key:
+                pdb[uid]['gemini_key'] = gemini_key
+        with open(PROFILE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(pdb, f, ensure_ascii=False, indent=2)
 
     return jsonify({'ok': True, 'added': added})
 
