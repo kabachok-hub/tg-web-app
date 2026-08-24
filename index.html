@@ -218,46 +218,43 @@
   <input type="date" id="custom-date-input" style="display:none" class="glass-input" onchange="setCustomDate()"/>
 
   <!-- Weight -->
-  <div class="section-title">Вес (кг)</div>
+  <div class="section-title">Вес (кг) — до 1000 кг</div>
   <div class="slider-section">
     <div class="weight-display glass">
+      <button class="adj-btn" onclick="adjustWeight(-5)">−5</button>
       <button class="adj-btn" onclick="adjustWeight(-2.5)">−2.5</button>
       <div class="val-center">
-        <input type="number" id="weight-input" value="80" step="0.1" min="0" max="999" class="val-input" oninput="updateWeightFromInput(this.value)"/>
+        <input type="number" id="weight-input" value="50" step="0.5" min="0" max="1000" class="val-input" oninput="updateWeightFromInput(this.value)"/>
         <small>кг</small>
       </div>
       <button class="adj-btn" onclick="adjustWeight(+2.5)">+2.5</button>
+      <button class="adj-btn" onclick="adjustWeight(+5)">+5</button>
     </div>
-    <input type="range" id="weight-slider" min="0" max="300" step="2.5" value="80" class="slider" oninput="updateWeight(this.value)"/>
-    <div class="quick-weights" id="quick-weights"></div>
+    <input type="range" id="weight-slider" min="0" max="1000" step="0.5" value="50" class="slider" oninput="updateWeight(this.value)"/>
     <label class="bodyweight-toggle">
       <input type="checkbox" id="no-weight-cb" onchange="toggleNoWeight()"/>
-      <span>Без веса (подтягивания, планка)</span>
+      <span>Без веса (подтягивания, пресс, планка)</span>
     </label>
   </div>
 
   <!-- Reps -->
-  <div class="section-title">Повторения</div>
-  <div class="weight-display glass">
-    <button class="adj-btn" onclick="adjustReps(-1)">−1</button>
-    <div class="val-center">
-      <input type="text" id="reps-input" value="8" class="val-input" oninput="updateRepsFromInput(this.value)"/>
-      <small>повт.</small>
+  <div class="section-title">Повторения — до 100 повт.</div>
+  <div class="slider-section">
+    <div class="weight-display glass">
+      <button class="adj-btn" onclick="adjustReps(-5)">−5</button>
+      <button class="adj-btn" onclick="adjustReps(-1)">−1</button>
+      <div class="val-center">
+        <input type="number" id="reps-input" value="8" min="1" max="100" class="val-input" oninput="updateRepsFromInput(this.value)"/>
+        <small>повт.</small>
+      </div>
+      <button class="adj-btn" onclick="adjustReps(+1)">+1</button>
+      <button class="adj-btn" onclick="adjustReps(+5)">+5</button>
     </div>
-    <button class="adj-btn" onclick="adjustReps(+1)">+1</button>
-  </div>
-  <div class="quick-reps">
-    <button class="chip" onclick="setReps(3)">3</button>
-    <button class="chip" onclick="setReps(5)">5</button>
-    <button class="chip" onclick="setReps(6)">6</button>
-    <button class="chip" onclick="setReps(8)">8</button>
-    <button class="chip" onclick="setReps(10)">10</button>
-    <button class="chip" onclick="setReps(12)">12</button>
-    <button class="chip" onclick="setReps(15)">15</button>
+    <input type="range" id="reps-slider" min="1" max="100" step="1" value="8" class="slider" oninput="updateRepsFromSlider(this.value)"/>
   </div>
 
-  <!-- RPE -->
-  <div class="section-title">Сложность (RPE)</div>
+  <!-- RPE for this set -->
+  <div class="section-title">Оценка подхода (RPE для этого сета)</div>
   <div class="rpe-buttons">
     <button class="rpe-btn green active" onclick="selectRPE('Легко', this)">🟢 Легко</button>
     <button class="rpe-btn yellow" onclick="selectRPE('Средне', this)">🟡 Средне</button>
