@@ -171,16 +171,42 @@
   </header>
 
   <!-- Exercise Picker -->
-  <div class="section-title">Упражнение</div>
-  <div class="exercise-chips" id="exercise-chips"></div>
-  <div class="custom-input-row">
-    <input type="text" id="custom-exercise-input" placeholder="Своё упражнение..." class="glass-input" maxlength="40"/>
-    <button class="icon-btn" onclick="selectCustomExercise()">✓</button>
+  <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+    <span>Упражнение</span>
+    <small id="ex-counter-badge" style="color:var(--text2); font-weight:600; font-size:0.72rem;">База 50+ упражнений</small>
   </div>
-  <div class="selected-exercise glass" id="selected-exercise-display" style="display:none">
-    <span id="selected-ex-name">—</span>
-    <button class="clear-btn" onclick="clearExercise()">✕</button>
+
+  <!-- Selected Exercise Pill (When Chosen) -->
+  <div class="selected-exercise glass" id="selected-exercise-display" style="display:none; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:1.2rem;" id="selected-ex-icon">🏋️</span>
+      <span id="selected-ex-name" style="font-weight:700;">—</span>
+    </div>
+    <button class="clear-btn" onclick="clearExercise()" title="Сбросить выбор">✕</button>
   </div>
+
+  <!-- Search & Add Bar -->
+  <div class="ex-search-box" style="margin-bottom:8px;">
+    <div style="display:flex; gap:6px;">
+      <input type="text" id="custom-exercise-input" placeholder="🔍 Найти или ввести своё упражнение..." class="glass-input" maxlength="60" style="flex:1; padding:10px 12px; font-size:0.85rem;" oninput="onExerciseSearchInput(this.value)" onkeydown="if(event.key==='Enter') selectCustomExercise()"/>
+      <button class="btn-primary" style="padding:0 14px; font-size:0.82rem; white-space:nowrap;" onclick="selectCustomExercise()" title="Выбрать или добавить">+ Ввод</button>
+    </div>
+  </div>
+
+  <!-- Category Filter Chips -->
+  <div class="ex-category-scroll day-chips-scroll" id="ex-category-chips" style="margin-bottom:8px; display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;">
+    <button class="chip active" onclick="filterExercisesByCategory('recent', this)">🔥 Недавние</button>
+    <button class="chip" onclick="filterExercisesByCategory('all', this)">🌐 Все</button>
+    <button class="chip" onclick="filterExercisesByCategory('chest', this)">🏋️ Грудь</button>
+    <button class="chip" onclick="filterExercisesByCategory('back', this)">🔙 Спина</button>
+    <button class="chip" onclick="filterExercisesByCategory('legs', this)">🦵 Ноги</button>
+    <button class="chip" onclick="filterExercisesByCategory('shoulders', this)">🛡️ Плечи</button>
+    <button class="chip" onclick="filterExercisesByCategory('arms', this)">💪 Руки</button>
+    <button class="chip" onclick="filterExercisesByCategory('core', this)">⚡ Пресс/Кор</button>
+  </div>
+
+  <!-- Exercise Chips Grid / List -->
+  <div class="exercise-chips" id="exercise-chips" style="max-height: 220px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px 8px 2px;"></div>
 
   <!-- Date -->
   <div class="section-title">Дата</div>
