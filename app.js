@@ -1059,9 +1059,14 @@ function renderDiary(days) {
       const badges = sets.map((s, idx) => {
         const repsClean = formatRepsClean(s);
         const wt = s.weight > 0 ? `${s.weight}кг×${repsClean}` : `BW×${repsClean}`;
-        return `<div class="diary-set-pill">
+        const setRpe = s.rpe || s.diff || 'Легко';
+        const rpeIcon = setRpe === 'Тяжело' ? '🔴' : (setRpe === 'Средне' || setRpe === 'Средно') ? '🟡' : '🟢';
+        const rpeDotClass = setRpe === 'Тяжело' ? 'rpe-dot-hard' : (setRpe === 'Средне' || setRpe === 'Средно') ? 'rpe-dot-medium' : 'rpe-dot-easy';
+
+        return `<div class="diary-set-pill" title="Подход ${idx + 1}: ${setRpe}">
           <span class="diary-set-pill-num">${idx + 1}</span>
-          <span>${wt}</span>
+          <span class="diary-set-rpe-dot ${rpeDotClass}" onclick="cycleHistorySetRPE('${s.id}', event)" title="Сложность: ${setRpe} (нажми для смены)">${rpeIcon}</span>
+          <span class="diary-set-pill-wt">${wt}</span>
           <span class="diary-set-pill-del" onclick="deleteHistorySet('${s.id}', event)" title="Удалить подход">&times;</span>
         </div>`;
       }).join('');
@@ -1097,6 +1102,22 @@ function renderDiary(days) {
       </div>
     </div>`;
   }).join('');
+}
+
+async function cycleHistorySetRPE(id, event) {
+  if (event) event.stopPropagation();
+  const set = DB.workouts.find(w => String(w.id) === String(id));
+  if (!set) return;
+  const cur = set.rpe || set.diff || 'Легко';
+  let next = 'Легко';
+  if (cur === 'Легко') next = 'Средне';
+  else if (cur === 'Средне' || cur === 'Средно') next = 'Тяжело';
+  else next = 'Легко';
+  set.rpe = next;
+  set.diff = next;
+  renderDiary(diaryDays);
+  await saveData();
+  showToast(`✅ Сложность сета изменена на: ${next}`);
 }
 
 async function deleteHistorySet(id, event) {
