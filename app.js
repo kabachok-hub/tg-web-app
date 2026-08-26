@@ -112,23 +112,6 @@ async function loadData() {
     DB.program = getDefaultPersonalProgram();
   }
 
-  // Очистка привязок к "3 дня" и дням недели
-  if (DB.program) {
-    if (DB.program.split_name) {
-      DB.program.split_name = DB.program.split_name.replace(/\s*\(\d+\s*(дня|дней|дн)[^)]*\)/gi, '').replace(/\s*—\s*\d+\s*(дня|дней|дн)/gi, '').trim();
-    }
-    if (Array.isArray(DB.program.days)) {
-      DB.program.days.forEach((d, idx) => {
-        if (d.title) {
-          d.title = d.title.replace(/\s*\([^)]*(Понедельник|Вторник|Среда|Четверг|Пятница|Суббота|Воскресенье)[^)]*\)/gi, '').replace(/^День\s+/gi, 'Тренировка ').replace(/^(Среда|Пятница|Понедельник)\s*•\s*/gi, `Тренировка ${idx+1}: `);
-        }
-        if (d.day_of_week && /(Понедельник|Вторник|Среда|Четверг|Пятница|Суббота|Воскресенье)/i.test(d.day_of_week)) {
-          d.day_of_week = `Тренировка ${idx + 1}`;
-        }
-      });
-    }
-  }
-
   // 3. Автоматически рассчитываем рекорды
   if (!DB.profile) DB.profile = {};
   if (!DB.profile.records || Object.keys(DB.profile.records).length === 0) {
@@ -2427,8 +2410,8 @@ function renderProgramWizardHTML() {
       <div style="background:linear-gradient(135deg, rgba(124,92,255,0.22), rgba(0,229,200,0.18)); border:1px solid rgba(0,229,200,0.45); border-radius:14px; padding:12px 14px; margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
           <div>
-            <div style="font-size:0.85rem; font-weight:800; color:#5eead4;">⭐ Персональный адаптивный план</div>
-            <div style="font-size:0.72rem; color:var(--text2); margin-top:2px;">Адаптивная периодизация + 0% осевого перегруза + 6 недель</div>
+            <div style="font-size:0.85rem; font-weight:800; color:#5eead4;">⭐ Твой персональный Anti-Overtraining план</div>
+            <div style="font-size:0.72rem; color:var(--text2); margin-top:2px;">Защита от осевого перегруза + волновая периодизация (6 недель)</div>
           </div>
           <button class="btn-primary" style="padding:8px 14px; font-size:0.78rem; font-weight:800; white-space:nowrap;" onclick="applyPersonalTemplate()">
             Активировать
@@ -2636,32 +2619,32 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
   };
 
   if (splitType === 'recovery_3d') {
-    splitName = 'SBD Троеборье: 2 Жима + Присед + Тяга (PubMed 2x)';
+    splitName = 'SBD Троеборье: 2 Жима в неделю + Присед + Тяга (PubMed 2x)';
     daysLayout = [
-      { day_number: 1, title: 'Тренировка 1 • Жим штанги лёжа (Тяжёлый / Силовой)', day_of_week: 'Тренировка 1', focus: 'Heavy Bench Press Power', exercises: [(function(){ const e = createEx('bench_press', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('bench_press', 50.0, 0, 1); return e; })()] },
-      { day_number: 2, title: 'Тренировка 2 • Приседания со штангой (База)', day_of_week: 'Тренировка 2', focus: 'Heavy Squat Strength', exercises: [(function(){ const e = createEx('squat', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('squat', 55.0, 1, 1); return e; })()] },
-      { day_number: 3, title: 'Тренировка 3 • Становая тяга + Жим (Объёмный / Техника)', day_of_week: 'Тренировка 3', focus: 'Deadlift Power & Volume Bench (Частота 2x PubMed)', exercises: [(function(){ const e = createEx('deadlift', 3, '5', 7.0); e.warmup_ladder = getWarmupLadder('deadlift', 70.0, 2, 1); return e; })(), (function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5, 2, 1); return e; })()] }
+      { day_number: 1, title: 'Понедельник • Жим штанги лёжа (Тяжёлый / Силовой)', day_of_week: 'Понедельник', focus: 'Heavy Bench Press Power', exercises: [(function(){ const e = createEx('bench_press', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('bench_press', 50.0, 0, 1); return e; })()] },
+      { day_number: 2, title: 'Среда • Приседания со штангой (База)', day_of_week: 'Среда', focus: 'Heavy Squat Strength', exercises: [(function(){ const e = createEx('squat', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('squat', 55.0, 1, 1); return e; })()] },
+      { day_number: 3, title: 'Пятница • Становая тяга + Жим (Объёмный / Техника)', day_of_week: 'Пятница', focus: 'Deadlift Power & Volume Bench (Частота 2x PubMed)', exercises: [(function(){ const e = createEx('deadlift', 3, '5', 7.0); e.warmup_ladder = getWarmupLadder('deadlift', 70.0, 2, 1); return e; })(), (function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5, 2, 1); return e; })()] }
     ];
   } else if (splitType === 'sbd_3d') {
-    splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка';
+    splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
     daysLayout = [
-      { day_number: 1, title: 'Тренировка 1: Squat Power (Присед + Квадрицепс + Кор)', day_of_week: 'Тренировка 1', focus: 'Squat Strength & Quads', exercises: [createEx('squat', 4, '3-5', 8.0), createEx('romanian_deadlift', 3, '6-8', 7.5), createEx('leg_press', 3, '8-10', 8.0), createEx('calf_raises', 4, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
-      { day_number: 2, title: 'Тренировка 2: Bench Power (Жим лёжа + Плечи + Трицепс)', day_of_week: 'Тренировка 2', focus: 'Bench Strength & Upper Push', exercises: [createEx('bench_press', 4, '3-5', 8.0), createEx('incline_dumbbell_press', 3, '6-8', 8.0), createEx('overhead_press', 3, '6-8', 7.5), createEx('close_grip_bench_press', 3, '6-8', 8.0), createEx('lateral_raises', 4, '12-15', 8.5)] },
-      { day_number: 3, title: 'Тренировка 3: Deadlift Power (Становая тяга + Спина + Бицепс)', day_of_week: 'Тренировка 3', focus: 'Deadlift Strength & Posterior Pull', exercises: [createEx('deadlift', 3, '3-5', 8.0), createEx('barbell_row', 4, '5-6', 7.5), createEx('lat_pulldown', 3, '8-10', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-10', 8.0)] }
+      { day_number: 1, title: 'День 1: Squat Power (Присед + Квадрицепс + Кор)', day_of_week: 'Понедельник', focus: 'Squat Strength & Quads', exercises: [createEx('squat', 4, '3-5', 8.0), createEx('romanian_deadlift', 3, '6-8', 7.5), createEx('leg_press', 3, '8-10', 8.0), createEx('calf_raises', 4, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
+      { day_number: 2, title: 'День 2: Bench Power (Жим лёжа + Плечи + Трицепс)', day_of_week: 'Среда', focus: 'Bench Strength & Upper Push', exercises: [createEx('bench_press', 4, '3-5', 8.0), createEx('incline_dumbbell_press', 3, '6-8', 8.0), createEx('overhead_press', 3, '6-8', 7.5), createEx('close_grip_bench_press', 3, '6-8', 8.0), createEx('lateral_raises', 4, '12-15', 8.5)] },
+      { day_number: 3, title: 'День 3: Deadlift Power (Становая тяга + Спина + Бицепс)', day_of_week: 'Пятница', focus: 'Deadlift Strength & Posterior Pull', exercises: [createEx('deadlift', 3, '3-5', 8.0), createEx('barbell_row', 4, '5-6', 7.5), createEx('lat_pulldown', 3, '8-10', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-10', 8.0)] }
     ];
   } else if (splitType === 'arnold_3d') {
-    splitName = 'Arnold Split: Грудь+Спина / Плечи+Руки / Ноги';
+    splitName = 'Arnold Split: Грудь+Спина / Плечи+Руки / Ноги (3 дня)';
     daysLayout = [
-      { day_number: 1, title: 'Тренировка 1: Chest & Back (Грудь + Спина Антагонисты)', day_of_week: 'Тренировка 1', focus: 'Chest & Back Hypertrophy', exercises: [createEx('bench_press', 4, '6-8', 7.5), createEx('barbell_row', 4, '6-8', 7.5), createEx('incline_dumbbell_press', 3, '8-12', 8.0), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('dips_chest', 3, '8-12', 8.0)] },
-      { day_number: 2, title: 'Тренировка 2: Shoulders & Arms (Плечи + Бицепс + Трицепс)', day_of_week: 'Тренировка 2', focus: 'Delts & Arms Pump', exercises: [createEx('overhead_press', 4, '6-8', 7.5), createEx('lateral_raises', 4, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-12', 8.0), createEx('skull_crushers', 3, '8-12', 8.0), createEx('hammer_curls', 3, '10-12', 8.5), createEx('tricep_rope_pushdown', 3, '10-15', 8.5)] },
-      { day_number: 3, title: 'Тренировка 3: Legs & Abs (Квадрицепс + Бицепс бедра + Пресс)', day_of_week: 'Тренировка 3', focus: 'Legs & Core Volume', exercises: [createEx('squat', 4, '6-8', 7.5), createEx('romanian_deadlift', 3, '8-10', 7.5), createEx('leg_press', 3, '10-12', 8.0), createEx('leg_curl', 3, '10-12', 8.5), createEx('calf_raises', 4, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] }
+      { day_number: 1, title: 'День 1: Chest & Back (Грудь + Спина Антагонисты)', day_of_week: 'Понедельник', focus: 'Chest & Back Hypertrophy', exercises: [createEx('bench_press', 4, '6-8', 7.5), createEx('barbell_row', 4, '6-8', 7.5), createEx('incline_dumbbell_press', 3, '8-12', 8.0), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('dips_chest', 3, '8-12', 8.0)] },
+      { day_number: 2, title: 'День 2: Shoulders & Arms (Плечи + Бицепс + Трицепс)', day_of_week: 'Среда', focus: 'Delts & Arms Pump', exercises: [createEx('overhead_press', 4, '6-8', 7.5), createEx('lateral_raises', 4, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-12', 8.0), createEx('skull_crushers', 3, '8-12', 8.0), createEx('hammer_curls', 3, '10-12', 8.5), createEx('tricep_rope_pushdown', 3, '10-15', 8.5)] },
+      { day_number: 3, title: 'День 3: Legs & Abs (Квадрицепс + Бицепс бедра + Пресс)', day_of_week: 'Пятница', focus: 'Legs & Core Volume', exercises: [createEx('squat', 4, '6-8', 7.5), createEx('romanian_deadlift', 3, '8-10', 7.5), createEx('leg_press', 3, '10-12', 8.0), createEx('leg_curl', 3, '10-12', 8.5), createEx('calf_raises', 4, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] }
     ];
   } else if (splitType === 'ppl_3d') {
-    splitName = 'Push / Pull / Legs (Доказательный MAV объём)';
+    splitName = 'Push / Pull / Legs (3 дня — Доказательный MAV объём)';
     daysLayout = [
-      { day_number: 1, title: 'Тренировка 1: Push (Грудь, Плечи, Трицепс)', day_of_week: 'Тренировка 1', focus: 'Push Compound & Stretch', exercises: [createEx('bench_press', 4, '6-8', 7.5), createEx('overhead_press', 3, '8-10', 8.0), createEx('incline_dumbbell_press', 3, '8-12', 8.0), createEx('lateral_raises', 4, '12-15', 8.5), createEx('tricep_rope_pushdown', 3, '10-12', 8.5)] },
-      { day_number: 2, title: 'Тренировка 2: Pull (Спина, Задняя дельта, Бицепс)', day_of_week: 'Тренировка 2', focus: 'Pull Compound & Width', exercises: [createEx('deadlift', 3, '4-5', 8.0), createEx('barbell_row', 4, '6-8', 7.5), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-12', 8.0)] },
-      { day_number: 3, title: 'Тренировка 3: Legs (Квадрицепсы, Бицепс бедра, Икры, Пресс)', day_of_week: 'Тренировка 3', focus: 'Legs & Core Power', exercises: [createEx('squat', 4, '6-8', 7.5), createEx('romanian_deadlift', 3, '8-10', 7.5), createEx('leg_press', 3, '10-12', 8.0), createEx('leg_curl', 3, '12-15', 8.5), createEx('calf_raises', 4, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] }
+      { day_number: 1, title: 'День 1: Push (Грудь, Плечи, Трицепс)', day_of_week: 'Понедельник', focus: 'Push Compound & Stretch', exercises: [createEx('bench_press', 4, '6-8', 7.5), createEx('overhead_press', 3, '8-10', 8.0), createEx('incline_dumbbell_press', 3, '8-12', 8.0), createEx('lateral_raises', 4, '12-15', 8.5), createEx('tricep_rope_pushdown', 3, '10-12', 8.5)] },
+      { day_number: 2, title: 'День 2: Pull (Спина, Задняя дельта, Бицепс)', day_of_week: 'Среда', focus: 'Pull Compound & Width', exercises: [createEx('deadlift', 3, '4-5', 8.0), createEx('barbell_row', 4, '6-8', 7.5), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('barbell_biceps_curl', 3, '8-12', 8.0)] },
+      { day_number: 3, title: 'День 3: Legs (Квадрицепсы, Бицепс бедра, Икры, Пресс)', day_of_week: 'Пятница', focus: 'Legs & Core Power', exercises: [createEx('squat', 4, '6-8', 7.5), createEx('romanian_deadlift', 3, '8-10', 7.5), createEx('leg_press', 3, '10-12', 8.0), createEx('leg_curl', 3, '12-15', 8.5), createEx('calf_raises', 4, '12-15', 8.5), createEx('hanging_leg_raises', 3, '12-15', 8.0)] }
     ];
   } else if (splitType === 'sbd_power_4d') {
     splitName = 'SBD Powerbuilding (4 дня — Сила 1ПМ + Рельеф)';
@@ -2706,11 +2689,11 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
       { day_number: 5, title: 'День 5: Arms', day_of_week: 'Суббота', focus: 'Arms Hypertrophy', exercises: [createEx('barbell_biceps_curl', 4, '8-10', 8.0), createEx('skull_crushers', 4, '8-10', 8.0), createEx('incline_dumbbell_curl', 3, '10-12', 8.5), createEx('tricep_rope_pushdown', 3, '10-12', 8.5), createEx('hammer_curls', 3, '10-12', 8.5)] }
     ];
   } else {
-    splitName = 'Full Body A / B / C (Высокочастотный стимул)';
+    splitName = 'Full Body A / B / C (3 дня — Высокочастотный стимул)';
     daysLayout = [
-      { day_number: 1, title: 'Тренировка 1: Full Body A (Присед + Жим)', day_of_week: 'Тренировка 1', focus: 'Heavy Compound Push', exercises: [createEx('squat', 4, '5-6', 7.5), createEx('bench_press', 4, '5-6', 7.5), createEx('barbell_row', 4, '6-8', 7.5), createEx('lateral_raises', 3, '12-15', 8.0), createEx('skull_crushers', 3, '8-12', 8.0), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
-      { day_number: 2, title: 'Тренировка 2: Full Body B (Тяга + Плечи)', day_of_week: 'Тренировка 2', focus: 'Pull & Overhead Press', exercises: [createEx('deadlift', 3, '4-5', 8.0), createEx('overhead_press', 4, '6-8', 7.5), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('incline_dumbbell_press', 3, '8-10', 8.0), createEx('barbell_biceps_curl', 3, '8-12', 8.0), createEx('calf_raises', 4, '12-15', 8.5)] },
-      { day_number: 3, title: 'Тренировка 3: Full Body C (Объем + Руки)', day_of_week: 'Тренировка 3', focus: 'Legs & Upper Hypertrophy', exercises: [createEx('romanian_deadlift', 3, '8-10', 7.5), createEx('leg_press', 3, '10-12', 8.0), createEx('dips_chest', 3, '8-12', 8.0), createEx('pullups', 3, '6-10', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('hammer_curls', 3, '10-12', 8.5)] }
+      { day_number: 1, title: 'День 1: Full Body A (Присед + Жим)', day_of_week: 'Понедельник', focus: 'Heavy Compound Push', exercises: [createEx('squat', 4, '5-6', 7.5), createEx('bench_press', 4, '5-6', 7.5), createEx('barbell_row', 4, '6-8', 7.5), createEx('lateral_raises', 3, '12-15', 8.0), createEx('skull_crushers', 3, '8-12', 8.0), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
+      { day_number: 2, title: 'День 2: Full Body B (Тяга + Плечи)', day_of_week: 'Среда', focus: 'Pull & Overhead Press', exercises: [createEx('deadlift', 3, '4-5', 8.0), createEx('overhead_press', 4, '6-8', 7.5), createEx('lat_pulldown', 3, '8-12', 8.0), createEx('incline_dumbbell_press', 3, '8-10', 8.0), createEx('barbell_biceps_curl', 3, '8-12', 8.0), createEx('calf_raises', 4, '12-15', 8.5)] },
+      { day_number: 3, title: 'День 3: Full Body C (Объем + Руки)', day_of_week: 'Пятница', focus: 'Legs & Upper Hypertrophy', exercises: [createEx('romanian_deadlift', 3, '8-10', 7.5), createEx('leg_press', 3, '10-12', 8.0), createEx('dips_chest', 3, '8-12', 8.0), createEx('pullups', 3, '6-10', 8.0), createEx('face_pulls', 3, '12-15', 8.5), createEx('hammer_curls', 3, '10-12', 8.5)] }
     ];
   }
 
@@ -2934,8 +2917,6 @@ function renderActiveProgramHTML() {
   const lName = p.level === 'beginner' ? '🌱 Новичок' : p.level === 'advanced' ? '👑 Опытный' : '🚀 Средний';
   const cycleNum = p.cycle_count || 1;
 
-  const cleanSplitName = (p.split_name || '').replace(/\s*\(\d+\s*(дня|дней|дн)[^)]*\)/gi, '').replace(/\s*—\s*\d+\s*(дня|дней|дн)/gi, '').trim() || 'Персональный сплит';
-
   return `
     <div class="prog-hero-card glass">
       <div class="prog-hero-header">
@@ -2944,9 +2925,9 @@ function renderActiveProgramHTML() {
             <span class="badge" style="background:rgba(124,92,255,0.25); color:#c4b5fd; border:1px solid rgba(124,92,255,0.4);">${gName}</span>
             <span class="badge" style="background:rgba(0,229,200,0.2); color:#5eead4; border:1px solid rgba(0,229,200,0.35);">${lName}</span>
             <span class="badge" style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid rgba(234,179,8,0.35);">🏆 Цикл ${cycleNum}</span>
-            <span class="badge" style="background:rgba(255,255,255,0.1);">Гибкий график</span>
+            <span class="badge" style="background:rgba(255,255,255,0.1);">${p.days_per_week} дн/нед</span>
           </div>
-          <h2 class="prog-hero-title">${cleanSplitName}</h2>
+          <h2 class="prog-hero-title">${p.split_name}</h2>
         </div>
       </div>
       
@@ -2956,9 +2937,14 @@ function renderActiveProgramHTML() {
         </div>
       ` : ''}
       
-      <div style="margin-top:10px; display:flex; justify-content:flex-end;">
-        <button class="chip" style="padding:3px 10px; font-size:0.72rem; background:rgba(124,92,255,0.18); border:1px solid rgba(124,92,255,0.35); color:#c4b5fd; cursor:pointer;" onclick="promptUpdate1RM()">
-          ⚡ Настроить веса
+      <!-- Active 1RMs & Auto-recalculator -->
+      <div style="margin-top:12px; padding:10px 12px; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="font-size:0.75rem; color:var(--text2);">
+          <span>⚖️ <strong>Базовые 1ПМ:</strong></span>
+          <span style="color:var(--text); font-weight:700; margin-left:4px;">Жим ${(p.user1rm ? p.user1rm.bench_press : 68)}кг · Присед ${(p.user1rm ? p.user1rm.squat : 90)}кг · Тяга ${(p.user1rm ? p.user1rm.deadlift : 100)}кг</span>
+        </div>
+        <button class="chip" style="padding:3px 10px; font-size:0.72rem; background:rgba(124,92,255,0.2); border:1px solid rgba(124,92,255,0.4); color:#c4b5fd; cursor:pointer;" onclick="promptUpdate1RM()">
+          ⚡ Пересчитать веса
         </button>
       </div>
 
@@ -3016,29 +3002,24 @@ function renderActiveProgramHTML() {
     </div>
 
     <!-- Day Chips Carousel -->
-    <div class="section-title">📅 Выбери тренировку</div>
+    <div class="section-title">📅 Выбери день тренировки</div>
     <div class="day-chips-scroll">
-      ${p.days.map((d, i) => {
-        const label = (d.title || '').split(':')[0].replace(/День\s*/i, 'Тренировка ').replace(/\s*\([^)]*\)/g, '').trim() || `Тренировка ${i+1}`;
-        return `
-          <button class="day-chip ${i===selectedProgramDay?'active':''}" onclick="selectProgramDay(${i})">
-            ${label}
-          </button>
-        `;
-      }).join('')}
+      ${p.days.map((d, i) => `
+        <button class="day-chip ${i===selectedProgramDay?'active':''}" onclick="selectProgramDay(${i})">
+          ${d.day_of_week || `День ${i+1}`}
+        </button>
+      `).join('')}
     </div>
 
     <!-- Active Day Exercises -->
     <div class="glass" style="padding:16px; margin-bottom:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div>
-          <h3 style="font-size:1.05rem; font-weight:800;">
-            ${(day.title || `Тренировка ${selectedProgramDay+1}`).replace(/День\s*/i, 'Тренировка ').replace(/\s*\([^)]*(Понедельник|Вторник|Среда|Четверг|Пятница|Суббота|Воскресенье)[^)]*\)/gi, '').replace(/^(Понедельник|Вторник|Среда|Четверг|Пятница|Суббота|Воскресенье)\s*•\s*/gi, `Тренировка ${selectedProgramDay+1}: `)}
-          </h3>
+          <h3 style="font-size:1.05rem; font-weight:800;">${day.title}</h3>
           <p style="font-size:0.75rem; color:var(--text2);">${day.focus || 'Силовой блок'}</p>
         </div>
         <button class="btn-primary" style="padding:8px 14px; font-size:0.78rem;" onclick="launchWorkoutFromProgram(${selectedProgramDay})">
-          ▶️ Запустить тренировку
+          ▶️ Запустить день
         </button>
       </div>
 
@@ -3223,7 +3204,7 @@ function updateAiCoachKeyStatus(isOnline, errDetail) {
     const w = body.bodyweight || body.weight || prof.weight;
     const hStr = h ? `${h} см` : 'рост не указан';
     const wStr = w ? `${w} кг` : 'вес не указан';
-    summ.textContent = `👤 Атлет: ${hStr} · ${wStr}`;
+    summ.textContent = `👤 Атлет: ${hStr} · ${wStr} · 1ПМ: 69/91/108 кг`;
   }
 }
 
@@ -3324,14 +3305,18 @@ function renderAiChatHistory() {
   }
 
   if (DB.ai_chat_history.length === 0) {
+    const records = (DB.profile && DB.profile.records) ? DB.profile.records : {};
+    const b = records['Жим лёжа'] || 69.3;
+    const s = records['Присед'] || 90.7;
+    const d = records['Становая тяга'] || 108.0;
     const count = (DB.workouts || []).length;
-    const cleanProg = DB.program ? (DB.program.split_name || '').replace(/\s*\(\d+\s*(дня|дней|дн)[^)]*\)/gi, '').replace(/\s*—\s*\d+\s*(дня|дней|дн)/gi, '').trim() : 'Адаптивный сплит';
     chat.innerHTML = `
       <div class="ai-msg assistant">
         👋 <strong>Привет! Я твой персональный научный ИИ-тренер</strong> (Google Gemini + доказательная база PubMed).<br/><br/>
         📊 <strong>Я знаю все твои тренировочные данные:</strong><br/>
+        • 🏋️ <strong>1ПМ Рекорды:</strong> Жим <strong>${b} кг</strong> · Присед <strong>${s} кг</strong> · Тяга <strong>${d} кг</strong><br/>
         • 📈 <strong>История дневника:</strong> все <strong>${count} подходов</strong> с оценками RPE (🟢/🟡/🔴) учтены.<br/>
-        • 🧬 <strong>Программа:</strong> ${cleanProg}.<br/><br/>
+        • 🧬 <strong>Программа:</strong> ${DB.program ? DB.program.split_name : 'Научный сплит'}.<br/><br/>
         Задай любой вопрос по восстановлению, тренировкам, выходу из плато или питанию!
       </div>
     `;
