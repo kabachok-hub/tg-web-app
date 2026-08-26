@@ -2837,6 +2837,17 @@ def ai_coach_command(message):
     else:
         bot.send_message(message.chat.id, "🤖 *ИИ-Тренер (Google Gemini)*\n\nЗадай любой вопрос о тренировках, восстановлении или питании:\nНапример: `/ai как прогрессировать в жиме?` или просто напиши вопрос сообщением!", parse_mode="Markdown", reply_markup=get_main_menu())
 
+def extract_number(val_str):
+    if not val_str:
+        return None
+    m = re.search(r'[-+]?\d+(?:[.,]\d+)?', str(val_str))
+    if m:
+        try:
+            return float(m.group(0).replace(',', '.'))
+        except ValueError:
+            return None
+    return None
+
 # === ХЕНДЛЕР ТЕКСТОВОГО ВВОДА (РОУТЕР) ===
 @bot.message_handler(func=lambda message: True)
 def handle_text_inputs(message):
@@ -2867,8 +2878,8 @@ def handle_text_inputs(message):
         return
     if state == "setup_height":
         try:
-            h = float(text)
-            if h < 100 or h > 250: raise ValueError
+            h = extract_number(text)
+            if h is None or h < 100 or h > 250: raise ValueError
             profiles_db[user_id]['height_cm'] = h
             user_states[user_id] = "setup_gender"
             markup = InlineKeyboardMarkup(row_width=2)
@@ -3007,8 +3018,8 @@ def handle_text_inputs(message):
     # ВЕС ТЕЛА
     if state == "waiting_bodyweight":
         try:
-            bw = float(text)
-            if bw <= 0 or bw > 350: raise ValueError
+            bw = extract_number(text)
+            if bw is None or bw <= 0 or bw > 350: raise ValueError
             if bw == int(bw): bw = int(bw)
             today_str = datetime.now().strftime("%d.%m.%Y")
             log_body_entry(user_id, today_str, bodyweight=bw)
@@ -3030,9 +3041,9 @@ def handle_text_inputs(message):
     if state == "waiting_calories":
         parts = message.text.strip().split(None, 3)
         try:
-            kcal = int(parts[0]) if parts else 0
-            prot = int(parts[1]) if len(parts) > 1 else 0
-            carbs = int(parts[2]) if len(parts) > 2 else 0
+            kcal = int(extract_number(parts[0]) or 0) if parts else 0
+            prot = int(extract_number(parts[1]) or 0) if len(parts) > 1 else 0
+            carbs = int(extract_number(parts[2]) or 0) if len(parts) > 2 else 0
             note = parts[3] if len(parts) > 3 else ""
             today_str = datetime.now().strftime("%d.%m.%Y")
             log_body_entry(user_id, today_str, calories=kcal, protein_g=prot, carbs_portions=carbs, note=note)
@@ -3055,8 +3066,8 @@ def handle_text_inputs(message):
     # РАЗМИНКА
     if state == "waiting_warmup_weight":
         try:
-            target_w = float(text)
-            if target_w <= 0 or target_w > 1000: raise ValueError
+            target_w = extract_number(text)
+            if target_w is None or target_w <= 0 or target_w > 1000: raise ValueError
             user_states.pop(user_id, None)
             plan = get_warmup_plan(target_w)
             bot.send_message(message.chat.id, plan, parse_mode="Markdown", reply_markup=get_main_menu())
@@ -3066,9 +3077,9 @@ def handle_text_inputs(message):
     # НОВЫЙ ВЕС
     if state == "waiting_action":
         try:
-            value = float(text)
-            if value < 0: raise ValueError
-            if value == int(value): value = int(value)
+            val = extract_number(text)
+            if val is None or val < 0: raise ValueError
+            value = int(val) if val == int(val) else val
             temp_workout[user_id]["current_weight"] = value
             user_states[user_id] = "waiting_reps"
             next_set_num = len(temp_workout[user_id]['sets']) + 1
@@ -3084,9 +3095,9 @@ def handle_text_inputs(message):
     # ВЕС ОТЯГОЩЕНИЯ
     if state == "waiting_weight":
         try:
-            value = float(text)
-            if value < 0: raise ValueError
-            if value == int(value): value = int(value)
+            val = extract_number(text)
+            if val is None or val < 0: raise ValueError
+            value = int(val) if val == int(val) else val
             temp_workout[user_id]["current_weight"] = value
             user_states[user_id] = "waiting_reps"
             wt_text = f"*{value} кг*" if value > 0 else "*(без веса)*"
@@ -3105,14 +3116,12 @@ def handle_text_inputs(message):
             rir_val = None
             if '+' in clean_text:
                 parts = clean_text.split('+')
-                reps_part = parts[0].strip()
-                rir_part = parts[1].strip()
-                reps_val = float(reps_part)
-                rir_val = float(rir_part)
+                reps_val = extract_number(parts[0])
+                rir_val = extract_number(parts[1])
             else:
-                reps_val = float(clean_text)
+                reps_val = extract_number(clean_text)
             
-            if reps_val <= 0 or reps_val > 200:
+            if reps_val is None or reps_val <= 0 or reps_val > 200:
                 raise ValueError
             if rir_val is not None and (rir_val < 0 or rir_val > 50):
                 raise ValueError
