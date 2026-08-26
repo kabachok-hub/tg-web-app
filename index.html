@@ -10,7 +10,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css?v=20260826_1400"/>
+  <link rel="stylesheet" href="style.css?v=20260826_1415"/>
 </head>
 <body>
 
@@ -227,7 +227,7 @@
       <button type="button" class="adj-btn" onclick="adjustWeight(-1)" title="Минус 1 кг">−1</button>
       <button type="button" class="adj-btn" onclick="adjustWeight(-0.5)" title="Минус 0.5 кг">−0.5</button>
       <div class="val-center">
-        <input type="number" id="weight-input" value="50" step="0.5" min="0" max="1000" class="val-input" oninput="updateWeightFromInput(this.value)"/>
+        <input type="text" inputmode="decimal" id="weight-input" value="50" class="val-input" oninput="updateWeightFromInput(this.value)"/>
         <small>кг</small>
       </div>
       <button type="button" class="adj-btn" onclick="adjustWeight(+0.5)" title="Плюс 0.5 кг">+0.5</button>
@@ -254,7 +254,7 @@
       <button class="adj-btn" onclick="adjustReps(-5)">−5</button>
       <button class="adj-btn" onclick="adjustReps(-1)">−1</button>
       <div class="val-center">
-        <input type="number" id="reps-input" value="8" min="1" max="50" class="val-input" oninput="updateRepsFromInput(this.value)"/>
+        <input type="text" inputmode="text" id="reps-input" value="8" class="val-input" oninput="updateRepsFromInput(this.value)"/>
         <small>повт.</small>
       </div>
       <button class="adj-btn" onclick="adjustReps(+1)">+1</button>
@@ -592,7 +592,7 @@
           <button class="chip" style="padding:2px 6px; font-size:0.65rem;" onclick="toggleApiKeyInput()">Настроить</button>
         </div>
         <div id="api-key-box" style="display:none; margin-top:6px;">
-          <input type="password" id="gemini-api-key-input" class="glass-input" placeholder="Вставь API-ключ Gemini..." style="width:100%; box-sizing:border-box; font-size:0.78rem; padding:6px;"/>
+          <input type="text" id="gemini-api-key-input" class="glass-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Вставь API-ключ Gemini..." style="width:100%; box-sizing:border-box; font-size:0.78rem; padding:6px; font-family:monospace;"/>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
             <small style="font-size:0.65rem; color:var(--text2);"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent3); text-decoration:underline;">Получить ключ бесплатно в Google AI Studio</a></small>
             <button class="btn-primary" style="padding:3px 10px; font-size:0.7rem;" onclick="saveGeminiApiKey()">Сохранить</button>
@@ -623,7 +623,7 @@
 
       <!-- Prompt Input -->
       <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
-        <input type="text" id="ai-coach-input" class="glass-input" placeholder="Задай любой вопрос ИИ-тренеру..." style="flex:1; padding:9px 12px; font-size:0.82rem;" onkeydown="if(event.key==='Enter') sendAiCoachMessage()"/>
+        <input type="text" id="ai-coach-input" class="glass-input" placeholder="Задай любой вопрос ИИ-тренеру..." style="flex:1; padding:9px 12px; font-size:0.82rem;" enterkeyhint="send" autocomplete="off" autocorrect="on" autocapitalize="sentences" onkeydown="if(event.key==='Enter') sendAiCoachMessage()"/>
         <button class="btn-primary" id="ai-send-btn" style="padding:9px 14px; font-size:0.85rem;" onclick="sendAiCoachMessage()">➤</button>
       </div>
     </div>
@@ -634,6 +634,6 @@
 <div class="toast" id="toast"></div>
 
 <!-- ═══════════════════════ SCRIPTS ═══════════════════════ -->
-<script src="app.js?v=20260826_1400"></script>
+<script src="app.js?v=20260826_1415"></script>
 </body>
 </html>
