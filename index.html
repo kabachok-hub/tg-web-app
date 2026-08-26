@@ -10,7 +10,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css?v=20260824_2130"/>
+  <link rel="stylesheet" href="style.css?v=20260826_1320"/>
 </head>
 <body>
 
@@ -224,14 +224,21 @@
   <div class="section-title">Вес (кг) — до 1000 кг</div>
   <div class="slider-section">
     <div class="weight-display glass">
-      <button class="adj-btn" onclick="adjustWeight(-5)">−5</button>
-      <button class="adj-btn" onclick="adjustWeight(-2.5)">−2.5</button>
+      <button type="button" class="adj-btn" onclick="adjustWeight(-1)" title="Минус 1 кг">−1</button>
+      <button type="button" class="adj-btn" onclick="adjustWeight(-0.5)" title="Минус 0.5 кг">−0.5</button>
       <div class="val-center">
         <input type="number" id="weight-input" value="50" step="0.5" min="0" max="1000" class="val-input" oninput="updateWeightFromInput(this.value)"/>
         <small>кг</small>
       </div>
-      <button class="adj-btn" onclick="adjustWeight(+2.5)">+2.5</button>
-      <button class="adj-btn" onclick="adjustWeight(+5)">+5</button>
+      <button type="button" class="adj-btn" onclick="adjustWeight(+0.5)" title="Плюс 0.5 кг">+0.5</button>
+      <button type="button" class="adj-btn" onclick="adjustWeight(+1)" title="Плюс 1 кг">+1</button>
+    </div>
+    <div class="weight-quick-steps" style="display:flex; justify-content:center; gap:6px; margin: 8px 0;">
+      <button type="button" class="chip" onclick="adjustWeight(-5)" style="padding:4px 10px; font-size:0.75rem; font-weight:700;">−5</button>
+      <button type="button" class="chip" onclick="adjustWeight(-2.5)" style="padding:4px 10px; font-size:0.75rem; font-weight:700;">−2.5</button>
+      <button type="button" class="chip" onclick="adjustWeight(+2.5)" style="padding:4px 10px; font-size:0.75rem; font-weight:700;">+2.5</button>
+      <button type="button" class="chip" onclick="adjustWeight(+5)" style="padding:4px 10px; font-size:0.75rem; font-weight:700;">+5</button>
+      <button type="button" class="chip" onclick="adjustWeight(+10)" style="padding:4px 10px; font-size:0.75rem; font-weight:700;">+10</button>
     </div>
     <input type="range" id="weight-slider" min="0" max="1000" step="0.5" value="50" class="slider" oninput="updateWeight(this.value)"/>
     <label class="bodyweight-toggle">
@@ -398,8 +405,11 @@
   </div>
 
   <!-- Body Stats -->
-  <div class="section-title">📊 Параметры тела</div>
-  <div class="body-stats-grid" id="body-stats-grid">
+  <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+    <span>📊 Параметры тела</span>
+    <button class="chip" onclick="openHealthModal()" style="padding:2px 8px; font-size:0.7rem; background:rgba(0,229,200,0.15); color:#5eead4; border:1px solid rgba(0,229,200,0.3);">✏️ Изменить вес и рост</button>
+  </div>
+  <div class="body-stats-grid" id="body-stats-grid" onclick="openHealthModal()" style="cursor:pointer;" title="Нажми, чтобы изменить рост и вес">
     <div class="body-stat glass">
       <span class="stat-icon">⚖️</span>
       <span class="stat-val" id="p-weight">—</span>
@@ -487,6 +497,10 @@
       <div class="input-group">
         <label>⚖️ Вес тела (кг)</label>
         <input type="number" id="h-weight" step="0.1" class="glass-input" placeholder="Например, 82.5"/>
+      </div>
+      <div class="input-group">
+        <label>📐 Рост (см)</label>
+        <input type="number" id="h-height" step="0.5" class="glass-input" placeholder="Например, 180"/>
       </div>
       <div class="input-group">
         <label>😴 Время сна (часов)</label>
@@ -586,6 +600,12 @@
         </div>
       </div>
 
+      <!-- Athlete Profile Summary in AI Coach -->
+      <div style="background:rgba(124,92,255,0.09); border:1px solid rgba(124,92,255,0.22); border-radius:10px; padding:6px 10px; display:flex; justify-content:space-between; align-items:center; font-size:0.72rem;">
+        <span id="ai-athlete-profile-summary" style="color:var(--text); font-weight:600;">👤 Параметры: Рост — см · Вес — кг</span>
+        <button class="chip" onclick="openHealthModal()" style="padding:2px 8px; font-size:0.68rem; background:rgba(0,229,200,0.15); color:#5eead4; border:1px solid rgba(0,229,200,0.3);">✏️ Изменить</button>
+      </div>
+
       <!-- Quick prompts Carousel -->
       <div class="ai-prompts-carousel" id="ai-prompts-carousel">
         <button class="chip" onclick="setCoachPrompt('Проанализируй мои силовые и восстановление: что делать на следующей тренировке?')">😴 Моё восстановление</button>
@@ -614,6 +634,6 @@
 <div class="toast" id="toast"></div>
 
 <!-- ═══════════════════════ SCRIPTS ═══════════════════════ -->
-<script src="app.js?v=20260824_2130"></script>
+<script src="app.js?v=20260826_1320"></script>
 </body>
 </html>
