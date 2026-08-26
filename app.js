@@ -1338,11 +1338,11 @@ function renderProfile() {
   $('profile-name').textContent = userName || profile.name || '—';
   const goals = { hypertrophy: '💪 Гипертрофия', strength: '🏋️ Сила', weight_loss: '🔥 Похудение', endurance: '🏃 Выносливость' };
   $('profile-goal').textContent = goals[profile.goal] || '—';
-  // Вес тела: API бота сохраняет как bodyweight, веб как weight — проверяем оба
-  const bodyWeight = body.bodyweight || body.weight;
-  $('p-weight').textContent = bodyWeight ? bodyWeight + 'кг' : '—';
-  const heightCm = profile.height_cm || profile.height || 0;
-  $('p-height').textContent = heightCm ? heightCm + 'см' : '—';
+  // Вес тела: проверяем bodyweight, weight и профиль
+  const bodyWeight = body.bodyweight || body.weight || profile.weight;
+  $('p-weight').textContent = bodyWeight ? bodyWeight + ' кг' : '—';
+  const heightCm = profile.height_cm || profile.height || body.height || 0;
+  $('p-height').textContent = heightCm ? heightCm + ' см' : '—';
   let fatPct = '—';
   if (body.measurements && heightCm) {
     const m = body.measurements;
@@ -1470,8 +1470,12 @@ function openHealthModal() {
   const entries = DB.body || [];
   const todayEntry = entries.find(e => e.date === todayStr) || {};
   const lastEntry = entries.length ? entries[entries.length - 1] : {};
+  const profile = DB.profile || {};
 
-  $('h-weight').value = todayEntry.bodyweight || todayEntry.weight || lastEntry.bodyweight || lastEntry.weight || '';
+  $('h-weight').value = todayEntry.bodyweight || todayEntry.weight || lastEntry.bodyweight || lastEntry.weight || profile.weight || '';
+  if ($('h-height')) {
+    $('h-height').value = profile.height_cm || profile.height || todayEntry.height || lastEntry.height || '';
+  }
   $('h-sleep').value = todayEntry.sleep_hours !== undefined ? todayEntry.sleep_hours : '';
   $('h-water').value = todayEntry.water_l !== undefined ? todayEntry.water_l : '';
   $('h-calories').value = todayEntry.calories || '';
@@ -1498,10 +1502,18 @@ function selectMood(mood, el) {
 
 async function saveHealthParams() {
   const weight = parseFloat($('h-weight').value) || null;
+  const height = $('h-height') ? (parseFloat($('h-height').value) || null) : null;
   const sleep = parseFloat($('h-sleep').value) || null;
   const water = parseFloat($('h-water').value) || null;
   const calories = parseInt($('h-calories').value) || 0;
   const protein = parseInt($('h-protein').value) || 0;
+
+  if (!DB.profile) DB.profile = {};
+  if (weight !== null) DB.profile.weight = weight;
+  if (height !== null) {
+    DB.profile.height_cm = height;
+    DB.profile.height = height;
+  }
 
   if (!DB.body) DB.body = [];
 
@@ -1513,6 +1525,7 @@ async function saveHealthParams() {
       date: todayStr,
       ts: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
       bodyweight: weight,
+      height: height,
       calories: calories,
       protein_g: protein,
       water_l: water,
@@ -1523,6 +1536,7 @@ async function saveHealthParams() {
     DB.body.push(entry);
   } else {
     if (weight !== null) entry.bodyweight = weight;
+    if (height !== null) entry.height = height;
     if (sleep !== null) entry.sleep_hours = sleep;
     if (water !== null) entry.water_l = water;
     entry.calories = calories;
@@ -1530,11 +1544,13 @@ async function saveHealthParams() {
     entry.mood = selectedMood;
   }
 
+  localStorage.setItem('gym_db', JSON.stringify(DB));
   await saveData();
-  showToast('✅ Показатели здоровья обновлены!');
+  showToast('✅ Вес, рост и показатели обновлены!');
   closeHealthModal();
   renderDashboard();
   renderProfile();
+  updateAiCoachKeyStatus();
 }
 
 // ── PubMed Articles ──
@@ -2673,7 +2689,6 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
       { day_number: 5, title: 'День 5: Arms', day_of_week: 'Суббота', focus: 'Arms Hypertrophy', exercises: [createEx('barbell_biceps_curl', 4, '8-10', 8.0), createEx('skull_crushers', 4, '8-10', 8.0), createEx('incline_dumbbell_curl', 3, '10-12', 8.5), createEx('tricep_rope_pushdown', 3, '10-12', 8.5), createEx('hammer_curls', 3, '10-12', 8.5)] }
     ];
   } else {
-    // Default 3d fullbody fallback
     splitName = 'Full Body A / B / C (3 дня — Высокочастотный стимул)';
     daysLayout = [
       { day_number: 1, title: 'День 1: Full Body A (Присед + Жим)', day_of_week: 'Понедельник', focus: 'Heavy Compound Push', exercises: [createEx('squat', 4, '5-6', 7.5), createEx('bench_press', 4, '5-6', 7.5), createEx('barbell_row', 4, '6-8', 7.5), createEx('lateral_raises', 3, '12-15', 8.0), createEx('skull_crushers', 3, '8-12', 8.0), createEx('hanging_leg_raises', 3, '12-15', 8.0)] },
@@ -3156,21 +3171,40 @@ function openAiCoachModal() {
   setupCarouselDrag();
 }
 
-function updateAiCoachKeyStatus() {
+function updateAiCoachKeyStatus(isOnline, errDetail) {
   const badge = $('ai-status-badge');
   const key = (DB.gemini_key || localStorage.getItem('gym_gemini_key') || '').trim();
   if (badge) {
     if (key) {
-      badge.style.background = 'rgba(16,185,129,0.2)';
-      badge.style.color = '#5eead4';
-      badge.style.borderColor = 'rgba(16,185,129,0.35)';
-      badge.textContent = '🟢 Gemini AI Онлайн';
+      if (errDetail) {
+        badge.style.background = 'rgba(239,68,68,0.2)';
+        badge.style.color = '#f87171';
+        badge.style.borderColor = 'rgba(239,68,68,0.4)';
+        badge.textContent = '⚠️ Ошибка ключа';
+      } else {
+        badge.style.background = 'rgba(16,185,129,0.2)';
+        badge.style.color = '#5eead4';
+        badge.style.borderColor = 'rgba(16,185,129,0.35)';
+        badge.textContent = '🟢 Gemini AI Онлайн';
+      }
     } else {
       badge.style.background = 'rgba(234,179,8,0.2)';
       badge.style.color = '#facc15';
       badge.style.borderColor = 'rgba(234,179,8,0.35)';
       badge.textContent = '🟡 Оффлайн база';
     }
+  }
+
+  // Update athlete summary bar in AI coach
+  const summ = $('ai-athlete-profile-summary');
+  if (summ) {
+    const prof = DB.profile || {};
+    const body = (DB.body && DB.body.length > 0) ? DB.body[DB.body.length - 1] : {};
+    const h = prof.height_cm || prof.height || body.height;
+    const w = body.bodyweight || body.weight || prof.weight;
+    const hStr = h ? `${h} см` : 'рост не указан';
+    const wStr = w ? `${w} кг` : 'вес не указан';
+    summ.textContent = `👤 Атлет: ${hStr} · ${wStr} · 1ПМ: 69/91/108 кг`;
   }
 }
 
@@ -3205,16 +3239,42 @@ function toggleApiKeyInput() {
   if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
 }
 
-function saveGeminiApiKey() {
+async function saveGeminiApiKey() {
   const key = ($('gemini-api-key-input').value || '').trim();
   DB.gemini_key = key;
   localStorage.setItem('gym_gemini_key', key);
   localStorage.setItem('gym_db', JSON.stringify(DB));
   saveData();
-  showToast(key ? '🔑 API-ключ Gemini сохранен!' : 'Ключ удален');
+
   const b = $('api-key-box');
   if (b) b.style.display = 'none';
+
+  if (!key) {
+    showToast('Ключ удален');
+    updateAiCoachKeyStatus();
+    return;
+  }
+
+  showToast('⏳ Проверяю API-ключ...');
   updateAiCoachKeyStatus();
+
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] })
+    });
+    const resJson = await r.json();
+    if (resJson.candidates && resJson.candidates[0]) {
+      showToast('✅ Gemini AI подключен и активен!');
+      updateAiCoachKeyStatus(true);
+    } else if (resJson.error) {
+      showToast(`⚠️ Ошибка: ${resJson.error.message || 'Проверьте ключ'}`);
+      updateAiCoachKeyStatus(false, resJson.error.message);
+    }
+  } catch (e) {
+    showToast('🔑 Ключ сохранен локально');
+  }
 }
 
 function setCoachPrompt(txt) {
@@ -3284,11 +3344,16 @@ function clearAiChatHistory() {
 
 function buildComprehensiveAthleteContext() {
   const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-  const userName = user && user.first_name ? user.first_name : 'Атлет';
+  const userName = user && user.first_name ? user.first_name : (DB.profile && DB.profile.name ? DB.profile.name : 'Атлет');
   const ws = DB.workouts || [];
   const records = (DB.profile && DB.profile.records) ? DB.profile.records : {};
   const prog = DB.program;
   const health = (DB.body && DB.body.length > 0) ? DB.body[DB.body.length - 1] : {};
+
+  const profile = DB.profile || {};
+  const heightCm = profile.height_cm || profile.height || health.height || 180;
+  const bodyWeight = health.bodyweight || health.weight || profile.weight || 75;
+  const bmi = (heightCm > 0 && bodyWeight > 0) ? (bodyWeight / Math.pow(heightCm / 100, 2)).toFixed(1) : '23.0';
 
   // Records
   const recEntries = Object.entries(records).map(([k, v]) => `${k}: ${v} кг (1ПМ)`).join(', ') || 'Жим 69.3 кг, Присед 90.7 кг, Тяга 108.0 кг';
@@ -3325,15 +3390,17 @@ function buildComprehensiveAthleteContext() {
   }
 
   // Health
-  let healthSummary = `Сон: ${health.sleep || '7.5'} ч, Вода: ${health.water || '2.5'} л, Вес тела: ${health.weight || '78'} кг, Калории: ${health.calories || '2400'} ккал`;
+  let healthSummary = `Рост: ${heightCm} см, Вес тела: ${bodyWeight} кг (ИМТ: ${bmi}), Сон: ${health.sleep_hours || health.sleep || '7.5'} ч, Вода: ${health.water_l || health.water || '2.5'} л, Калории: ${health.calories || '2400'} ккал, Белок: ${health.protein_g || '150'} г`;
 
   return `
 Ты — элитный персональный научный тренер по силовым тренировкам (Evidence-Based Strength & Hypertrophy Coach) на базе мета-анализов PubMed (Brad Schoenfeld, Eric Helms, Mike Zourdos, Mark Latash).
 Ты знаешь абсолютно всю тренировочную историю и физиологические параметры атлета:
 
-👤 ПРОФИЛЬ АТЛЕТА:
+👤 ФИЗИОЛОГИЧЕСКИЙ ПРОФИЛЬ АТЛЕТА:
 - Имя: ${userName}
-- Параметры здоровья на сегодня: ${healthSummary}
+- Рост: ${heightCm} см
+- Вес тела: ${bodyWeight} кг (ИМТ: ${bmi})
+- Текущие параметры здоровья: ${healthSummary}
 - Особенность: Медленный тип восстановления, высокая чувствительность к осевым нагрузкам на позвоночник (нужен грамотный разнос приседа и тяги, баланс жимов и тяг 1:1).
 
 🏆 РЕКОРДЫ (1ПМ):
@@ -3347,7 +3414,7 @@ ${recentWorkoutsSummary || '110 подходов зафиксировано в �
 
 ПРАВИЛА ОТВЕТА:
 1. Обращайся к атлету дружелюбно, по-тренерски уверенно и профессионально.
-2. Используй точные данные атлета (его реальные веса, подходы, уровень усталости RPE, неделю программы).
+2. Используй точные данные атлета (его реальный рост ${heightCm} см, вес ${bodyWeight} кг, рабочие веса, подходы, уровень усталости RPE, неделю программы).
 3. Приводи научные обоснования (PubMed, авторы: Schoenfeld, Helms, Morton, Zourdos, Latash) с понятными конкретными рекомендациями (в кг, подходах, повторениях, минутах отдыха).
 4. Пиши структурированно, без лишней воды, выделяя главное жирным шрифтом.
 `.trim();
@@ -3386,10 +3453,10 @@ async function sendAiCoachMessage() {
   if (key) {
     // Official production Google AI Studio models in priority order
     const modelsToTry = [
-      'gemini-1.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-pro',
-      'gemini-1.5-flash-8b'
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-3.6-flash',
+      'gemini-flash-latest'
     ];
 
     // Build strictly alternating dialog turns (user, model, user, model...)
@@ -3457,6 +3524,7 @@ async function sendAiCoachMessage() {
 
     if (!replyText && lastErrMsg) {
       console.warn('Gemini API Warning:', lastErrMsg);
+      replyText = `⚠️ **Ошибка Gemini API:** ${lastErrMsg}\n\n*Переключаюсь на научную оффлайн-базу:*`;
     }
   }
 
