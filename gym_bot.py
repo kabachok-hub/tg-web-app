@@ -150,9 +150,16 @@ def query_gemini_coach(user_id, question_text):
             ex_dict.setdefault(ex, []).append(f"{wt}кг×{rp} ({rpe})")
         recent_summary += f"\n- {d}: " + "; ".join([f"{ex}: {', '.join(sets)}" for ex, sets in ex_dict.items()])
         
+    user_profile = profiles_db.get(user_id_str, {})
+    height_cm = user_profile.get('height_cm') or user_profile.get('height') or 180
+    user_body = body_db.get(user_id_str, [])
+    bw = (user_body[-1].get('bodyweight') if user_body else None) or user_profile.get('weight') or 75
+    
     system_context = f"""
 Ты — персональный научный тренер по силовым тренировкам (Evidence-Based Coach) на базе PubMed.
 Данные атлета:
+- Рост: {height_cm} см
+- Вес тела: {bw} кг
 - 1ПМ Рекорды: {rec_str}
 - Всего подходов в дневнике: {len(user_history)}
 - Последние тренировки с RPE: {recent_summary or 'Жим 50кг×6 (Тяжело)'}
@@ -164,10 +171,10 @@ def query_gemini_coach(user_id, question_text):
 """.strip()
 
     models_to_try = [
-        'gemini-1.5-flash',
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-        'gemini-1.5-flash-8b'
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-3.6-flash',
+        'gemini-flash-latest'
     ]
     
     for model in models_to_try:
