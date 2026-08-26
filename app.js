@@ -683,7 +683,13 @@ function updateWeight(v) {
 }
 
 function updateWeightFromInput(v) {
-  syncWorkoutInputs(v, undefined);
+  const clean = String(v || '').replace(',', '.').replace(/[^\d.]/g, '');
+  if (clean) {
+    const num = parseFloat(clean);
+    if (!isNaN(num)) {
+      syncWorkoutInputs(num, undefined);
+    }
+  }
 }
 
 function adjustWeight(delta) {
@@ -3169,6 +3175,16 @@ function openAiCoachModal() {
   updateAiCoachKeyStatus();
   renderAiChatHistory();
   setupCarouselDrag();
+
+  const chatInp = $('ai-coach-input');
+  if (chatInp && !chatInp._scrollBound) {
+    chatInp._scrollBound = true;
+    chatInp.addEventListener('focus', () => {
+      setTimeout(() => {
+        chatInp.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 300);
+    });
+  }
 }
 
 function updateAiCoachKeyStatus(isOnline, errDetail) {
