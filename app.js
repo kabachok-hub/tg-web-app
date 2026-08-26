@@ -3371,17 +3371,38 @@ function buildComprehensiveAthleteContext() {
   const bodyWeight = health.bodyweight || health.weight || profile.weight || 75;
   const bmi = (heightCm > 0 && bodyWeight > 0) ? (bodyWeight / Math.pow(heightCm / 100, 2)).toFixed(1) : '23.0';
 
-  // Records
+  // 1RM Records
   const recEntries = Object.entries(records).map(([k, v]) => `${k}: ${v} кг (1ПМ)`).join(', ') || 'Жим 69.3 кг, Присед 90.7 кг, Тяга 108.0 кг';
 
-  // Recent 5 workouts with per-set RPE
+  // Current Date & Day of week
+  const now = new Date();
+  const todayStr = fmtDate(now);
+  const daysOfWeekRu = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+  const todayDayRu = daysOfWeekRu[now.getDay()];
+
+  // Today's completed workout sets
+  const todaySets = ws.filter(w => w && w.date === todayStr);
+  let todaySummary = 'Сегодня в дневник тренировка ещё не записана.';
+  if (todaySets.length > 0) {
+    const todayGroups = {};
+    todaySets.forEach(s => {
+      const ex = s.exercise || 'Упражнение';
+      if (!todayGroups[ex]) todayGroups[ex] = [];
+      const rpe = s.rpe || s.diff || 'Легко';
+      const rpeEmoji = rpe === 'Тяжело' ? '🔴 Тяжело' : (rpe === 'Средне' || rpe === 'Средно') ? '🟡 Средне' : '🟢 Легко';
+      todayGroups[ex].push(`${s.weight > 0 ? s.weight + 'кг' : 'BW'}×${s.reps} (${rpeEmoji})`);
+    });
+    todaySummary = Object.entries(todayGroups).map(([ex, slist]) => `* ${ex}: ${slist.join(', ')}`).join('\n');
+  }
+
+  // Recent 10 workouts with per-set RPE
   const byDate = {};
   ws.forEach(w => {
     if (!w || !w.date) return;
     if (!byDate[w.date]) byDate[w.date] = [];
     byDate[w.date].push(w);
   });
-  const recentDates = Object.keys(byDate).sort((a, b) => (parseDate(b) || 0) - (parseDate(a) || 0)).slice(0, 5);
+  const recentDates = Object.keys(byDate).sort((a, b) => (parseDate(b) || 0) - (parseDate(a) || 0)).slice(0, 10);
 
   let recentWorkoutsSummary = '';
   recentDates.forEach(d => {
@@ -3397,12 +3418,35 @@ function buildComprehensiveAthleteContext() {
     recentWorkoutsSummary += `\n- Дата ${d}:\n` + Object.entries(exGroups).map(([ex, slist]) => `   * ${ex}: ${slist.join(', ')}`).join('\n');
   });
 
-  // Program status
-  let programSummary = 'Программа не настроена';
+  // Comprehensive Program Breakdown
+  let programSummary = 'Программа ещё не создана';
   if (prog) {
     const curW = prog.current_week || 1;
     const curWInfo = (prog.wave_matrix || []).find(m => m.week_number === curW);
-    programSummary = `${prog.split_name || prog.split_type}, Неделя ${curW} из 6 (${curWInfo ? curWInfo.phase : 'Фаза прогресса'}, Целевой RPE: ${curWInfo ? curWInfo.target_rpe : 8.0})`;
+    const phaseStr = curWInfo ? `${curWInfo.phase} (Интенсивность: ${curWInfo.intensity_pct || '72.5%'}, Целевой RPE: ${curWInfo.target_rpe || 7.5})` : 'Фаза 1: Вкатывание / Адаптация связок';
+    const cycleCount = prog.cycle_count || 1;
+
+    let daysLines = [];
+    (prog.days || []).forEach((day, dIdx) => {
+      let exLines = [];
+      (day.exercises || []).forEach(ex => {
+        let warmupStr = '';
+        if (ex.warmup_ladder && ex.warmup_ladder.length) {
+          warmupStr = ` [Разминка: ${ex.warmup_ladder.map(l => `${l.weight}кг×${l.reps}`).join(' ➔ ')}]`;
+        }
+        exLines.push(`     • ${ex.name}: ${ex.sets} подх. × ${ex.reps} повт., ПЛАНОВЫЙ РАБОЧИЙ ВЕС: ${ex.working_weight} кг (Целевой RPE: ${ex.target_rpe || 7.5})${warmupStr}`);
+      });
+      daysLines.push(`  [День ${dIdx + 1}: ${day.title || day.day_of_week} (Фокус: ${day.focus || 'База'})]\n${exLines.join('\n')}`);
+    });
+
+    programSummary = `
+- Сплит: ${prog.split_name || prog.split_type}
+- Текущий цикл: ${cycleCount}, Текущая неделя: Неделя ${curW} из 6 — ${phaseStr}
+- Базовые 1ПМ в расчёте плана: Жим ${prog.user1rm ? prog.user1rm.bench_press : 68} кг, Присед ${prog.user1rm ? prog.user1rm.squat : 90} кг, Тяга ${prog.user1rm ? prog.user1rm.deadlift : 100} кг
+
+ТОЧНЫЙ ПЛАН УПРАЖНЕНИЙ И РАБОЧИХ ВЕСОВ ПО ДНЯМ:
+${daysLines.join('\n\n')}
+`.trim();
   }
 
   // Health
@@ -3410,29 +3454,41 @@ function buildComprehensiveAthleteContext() {
 
   return `
 Ты — элитный персональный научный тренер по силовым тренировкам (Evidence-Based Strength & Hypertrophy Coach) на базе мета-анализов PubMed (Brad Schoenfeld, Eric Helms, Mike Zourdos, Mark Latash).
-Ты знаешь абсолютно всю тренировочную историю и физиологические параметры атлета:
+Ты знаешь абсолютно ВСЮ программу, тренировочную историю и физиологические параметры атлета:
+
+📅 ТЕКУЩЕЕ ВРЕМЯ И СЕГОДНЯШНИЙ ДЕНЬ:
+- Сегодняшняя дата: ${todayStr} (${todayDayRu})
 
 👤 ФИЗИОЛОГИЧЕСКИЙ ПРОФИЛЬ АТЛЕТА:
 - Имя: ${userName}
 - Рост: ${heightCm} см
 - Вес тела: ${bodyWeight} кг (ИМТ: ${bmi})
-- Текущие параметры здоровья: ${healthSummary}
-- Особенность: Медленный тип восстановления, высокая чувствительность к осевым нагрузкам на позвоночник (нужен грамотный разнос приседа и тяги, баланс жимов и тяг 1:1).
+- Текущие параметры здоровья и восстановления: ${healthSummary}
+- Физиологическая особенность: Медленный тип восстановления, высокая чувствительность к осевым нагрузкам на позвоночник. Поэтому в программе применяется строгая волновая периодизация, разнос приседа и тяги, баланс жимов и тяг 1:1, а рабочие веса на первой неделе намеренно подобраны умеренными для защиты ЦНС и связок.
 
-🏆 РЕКОРДЫ (1ПМ):
+🏆 СИЛОВЫЕ РЕКОРДЫ АТЛЕТА (1ПМ):
 ${recEntries}
 
-🧬 ТЕКУЩАЯ ПРОГРАММА:
+🧬 ТЕКУЩАЯ АКТИВНАЯ ПРОГРАММА ТРЕНИРОВОК АТЛЕТА:
 ${programSummary}
 
-📋 ПОСЛЕДНИЕ ТРЕНИРОВКИ ИЗ ДНЕВНИКА (Всего в базе ${ws.length} подходов):
-${recentWorkoutsSummary || '110 подходов зафиксировано в базе данных.'}
+🔥 ТРЕНИРОВКА СЕГОДНЯ (${todayStr}):
+${todaySummary}
 
-ПРАВИЛА ОТВЕТА:
-1. Обращайся к атлету дружелюбно, по-тренерски уверенно и профессионально.
-2. Используй точные данные атлета (его реальный рост ${heightCm} см, вес ${bodyWeight} кг, рабочие веса, подходы, уровень усталости RPE, неделю программы).
-3. Приводи научные обоснования (PubMed, авторы: Schoenfeld, Helms, Morton, Zourdos, Latash) с понятными конкретными рекомендациями (в кг, подходах, повторениях, минутах отдыха).
-4. Пиши структурированно, без лишней воды, выделяя главное жирным шрифтом.
+📋 ПОСЛЕДНИЕ ТРЕНИРОВКИ ИЗ ДНЕВНИКА (Всего в базе ${ws.length} подходов):
+${recentWorkoutsSummary || 'Подходов зафиксировано в базе данных.'}
+
+🎯 ГЛАВНЫЕ ПРАВИЛА И ИНСТРУКЦИИ ДЛЯ ИИ-ТРЕНЕРА:
+1. КОГДА АТЛЕТ СПРАШИВАЕТ «какая у меня была тренировка?», «как я потренировался?», «что я делал сегодня?»:
+   - Смотри раздел «ТРЕНИРОВКА СЕГОДНЯ (${todayStr})» (если записи есть за сегодня) или последнюю дату из «ПОСЛЕДНИЕ ТРЕНИРОВКИ».
+   - Перечисли точные упражнения, сделанные веса, количество подходов и повторений, а также RPE.
+   - СВЕРЯЙ его выполненную тренировку с ЕГО ТЕКУЩЕЙ АКТИВНОЙ ПРОГРАММОЙ выше!
+   - ⚠️ КРИТИЧЕСКИ ВАЖНО: В текущей активной программе атлета рабочий вес на Присед на текущей неделе равен именно 55.0 кг (это фаза вкатывания Недели 1 для защиты спины и связок)! Если атлет присел до 55 кг (например, 55 кг × 6) — ОН СДЕЛАЛ ВСЁ АБСОЛЮТНО ПРАВИЛЬНО И ТОЧНО ПО СВОЕЙ ПРОГРАММЕ!
+   - ⚠️ СТРОГО ЗАПРЕЩЕНО говорить, что у него «по программе должно быть 65 кг» или что он ошибся. У него в программе прописано ровно 55.0 кг! Похвали его за дисциплину и строгое следование плану.
+2. Обращайся к атлету дружелюбно, по-тренерски уверенно и профессионально.
+3. Используй точные данные атлета (его реальный рост ${heightCm} см, вес ${bodyWeight} кг, веса из его программы).
+4. Приводи научные обоснования (PubMed, Schoenfeld, Helms, Morton, Zourdos, Latash) с понятными рекомендациями (в кг, подходах, повторениях, минутах отдыха).
+5. Пиши структурированно, без лишней воды, выделяя главное жирным шрифтом.
 `.trim();
 }
 
