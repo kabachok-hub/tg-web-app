@@ -150,24 +150,92 @@ def query_gemini_coach(user_id, question_text):
             ex_dict.setdefault(ex, []).append(f"{wt}кг×{rp} ({rpe})")
         recent_summary += f"\n- {d}: " + "; ".join([f"{ex}: {', '.join(sets)}" for ex, sets in ex_dict.items()])
         
+    # Сегодняшний день и тренировка
+    today_dt = datetime.now()
+    today_str = today_dt.strftime("%d.%m.%Y")
+    today_day = DAYS_RU[today_dt.weekday()] if 'DAYS_RU' in globals() else ""
+    
+    today_sets = [w for w in user_history if w.get('date') == today_str]
+    today_summary = "Сегодня ещё нет записанных подходов."
+    if today_sets:
+        t_dict = {}
+        for s in today_sets:
+            ex = s.get('exercise', 'Упр')
+            rpe = s.get('rpe') or s.get('diff') or 'Легко'
+            wt = s.get('weight', 0)
+            rp = s.get('reps', 0)
+            t_dict.setdefault(ex, []).append(f"{wt}кг×{rp} ({rpe})")
+        today_summary = "; ".join([f"{ex}: {', '.join(sets)}" for ex, sets in t_dict.items()])
+
+    # Программа тренировок
+    prog = programs_db.get(user_id_str, {})
+    if not prog and os.path.exists(PROGRAM_DB_FILE):
+        try:
+            with open(PROGRAM_DB_FILE, 'r', encoding='utf-8') as f:
+                p_all = json.load(f)
+                prog = p_all.get(user_id_str, {})
+        except Exception:
+            pass
+            
+    program_summary = ""
+    if prog and prog.get('days'):
+        split_name = prog.get('split_name') or prog.get('split_type') or 'SBD Троеборье'
+        cur_w = prog.get('current_week', 1)
+        days_txt = []
+        for i, d in enumerate(prog.get('days', []), 1):
+            ex_txt = []
+            for ex in d.get('exercises', []):
+                name = ex.get('name', '')
+                sets = ex.get('sets', 3)
+                reps = ex.get('reps', 6)
+                ww = ex.get('working_weight', 0)
+                ex_txt.append(f"  • {name}: {sets} подх. × {reps} повт., ПЛАНОВЫЙ ВЕС: {ww} кг")
+            days_txt.append(f"День {i} ({d.get('title') or d.get('day_of_week')}):\n" + "\n".join(ex_txt))
+        program_summary = f"Сплит: {split_name} (Неделя {cur_w} из 6)\n" + "\n\n".join(days_txt)
+    else:
+        program_summary = (
+            "Сплит: SBD Anti-Overtraining 3D (Неделя 1 из 6, Вкатывание)\n"
+            "День 1 (Понедельник): Жим штанги лёжа: 3 подх. × 6 повт., ПЛАНОВЫЙ ВЕС: 50.0 кг\n"
+            "День 2 (Среда): Приседания со штангой: 3 подх. × 6 повт., ПЛАНОВЫЙ ВЕС: 55.0 кг\n"
+            "День 3 (Пятница): Становая тяга: 3 подх. × 5 повт., ПЛАНОВЫЙ ВЕС: 70.0 кг; Жим лёжа: 3 подх. × 6 повт., ПЛАНОВЫЙ ВЕС: 42.5 кг"
+        )
+        
     user_profile = profiles_db.get(user_id_str, {})
     height_cm = user_profile.get('height_cm') or user_profile.get('height') or 180
     user_body = body_db.get(user_id_str, [])
     bw = (user_body[-1].get('bodyweight') if user_body else None) or user_profile.get('weight') or 75
     
     system_context = f"""
-Ты — персональный научный тренер по силовым тренировкам (Evidence-Based Coach) на базе PubMed.
-Данные атлета:
+Ты — персональный научный тренер по силовым тренировкам (Evidence-Based Coach) на базе мета-анализов PubMed (Schoenfeld, Helms, Zourdos, Latash).
+Ты знаешь абсолютно ВСЮ программу, тренировочную историю и физиологические параметры атлета:
+
+📅 ТЕКУЩЕЕ ВРЕМЯ:
+- Сегодняшняя дата: {today_str} ({today_day})
+
+👤 ДАННЫЕ АТЛЕТА:
 - Рост: {height_cm} см
 - Вес тела: {bw} кг
-- 1ПМ Рекорды: {rec_str}
+- Силовые рекорды (1ПМ): {rec_str}
 - Всего подходов в дневнике: {len(user_history)}
-- Последние тренировки с RPE: {recent_summary or 'Жим 50кг×6 (Тяжело)'}
-- Особенность: Чувствительность к осевой нагрузке на позвоночник.
+- Физиологическая особенность: Высокая чувствительность к осевым нагрузкам на позвоночник. В программе применяется волновая периодизация, разнос приседа и тяги, баланс жимов и тяг 1:1, а веса на Неделе 1 подобраны умеренными для защиты связок и ЦНС.
+
+🧬 ТЕКУЩАЯ АКТИВНАЯ ПРОГРАММА АТЛЕТА (ТОЧНЫЙ ПЛАН):
+{program_summary}
+
+🔥 ТРЕНИРОВКА СЕГОДНЯ ({today_str}):
+{today_summary}
+
+📋 ПОСЛЕДНИЕ ТРЕНИРОВКИ ИЗ ДНЕВНИКА:
+{recent_summary or 'Жим 50кг×6 (Тяжело)'}
 
 Вопрос атлета: "{question_text}".
 
-Ответь структурированно, кратко, четко, с практическими советами в килограммах/подходах/повторениях, ссылаясь на доказательный тренинг (PubMed).
+🎯 ПРАВИЛА И ИНСТРУКЦИИ ДЛЯ ОТВЕТА:
+1. Если атлет спрашивает «какая у меня была тренировка?», «как я потренировался?», «что я делал сегодня?»:
+   - Опиши его тренировку за СЕГОДНЯ ({today_str}) или последнюю дату из дневника.
+   - СВЕРЯЙ его выполненную тренировку с ЕГО АКТИВНОЙ ПРОГРАММОЙ выше!
+   - ⚠️ КРИТИЧЕСКИ ВАЖНО: В текущей программе рабочий вес на присед на текущей неделе составляет ровно 55.0 кг! Если атлет приседал до 55 кг — он сделал всё абсолютно правильно и строго по плану программы! Ни в коем случае НЕ говори, что у него «должно быть 65 кг» или что он ошибся. Похвали за дисциплину и строгое соблюдение периодизации!
+2. Отвечай структурированно, кратко, четко, с практическими советами в килограммах/подходах/повторениях, ссылаясь на доказательный тренинг (PubMed).
 """.strip()
 
     models_to_try = [
