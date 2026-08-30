@@ -2,7 +2,7 @@
 const tg = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-const API = 'https://kABACh0k.pythonanywhere.com/api'; // замени на URL своего сервера
+const API = 'https://135-106-197-135.sslip.io/api'; // Dedicated VDS HTTPS API
 const DEFAULT_GEMINI_KEY = '';
 let DB = { workouts: [], profile: {}, body: [], program: null };
 let currentTab = 'dashboard';
