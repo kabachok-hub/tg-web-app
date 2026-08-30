@@ -9,14 +9,16 @@ app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
 def _get_path(filename):
-    # Если файл существует в ~/ (PythonAnywhere), берем его, иначе текущую директорию
+    cur_dir_p = os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
+    if os.path.exists(cur_dir_p):
+        return cur_dir_p
+    parent_p = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', filename))
+    if os.path.exists(parent_p):
+        return parent_p
     home_p = os.path.expanduser(f'~/{filename}')
     if os.path.exists(home_p):
         return home_p
-    cur_p = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', filename))
-    if os.path.exists(cur_p):
-        return cur_p
-    return home_p
+    return cur_dir_p
 
 DB_FILE      = _get_path('gym_database.json')
 BODY_FILE    = _get_path('body_database.json')
