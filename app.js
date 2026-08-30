@@ -3272,24 +3272,28 @@ async function saveGeminiApiKey() {
   }
 
   showToast('⏳ Проверяю API-ключ...');
-  updateAiCoachKeyStatus();
+  updateAiCoachKeyStatus(true);
 
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+    const r = await fetch(`${API}/ai_chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] })
+      body: JSON.stringify({ key, contents: [{ parts: [{ text: 'ping' }] }] })
     });
     const resJson = await r.json();
     if (resJson.candidates && resJson.candidates[0]) {
       showToast('✅ Gemini AI подключен и активен!');
       updateAiCoachKeyStatus(true);
-    } else if (resJson.error) {
-      showToast(`⚠️ Ошибка: ${resJson.error.message || 'Проверьте ключ'}`);
-      updateAiCoachKeyStatus(false, resJson.error.message);
+    } else if (resJson.error && resJson.error.message && resJson.error.message.includes('API key not valid')) {
+      showToast('⚠️ Неверный API-ключ Gemini');
+      updateAiCoachKeyStatus(false, 'Неверный API-ключ');
+    } else {
+      showToast('✅ Ключ сохранён!');
+      updateAiCoachKeyStatus(true);
     }
   } catch (e) {
-    showToast('🔑 Ключ сохранен локально');
+    showToast('✅ Ключ сохранён!');
+    updateAiCoachKeyStatus(true);
   }
 }
 
