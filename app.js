@@ -3324,6 +3324,16 @@ function renderAiChatHistory() {
     DB.ai_chat_history = [];
   }
 
+  // Очищаем старые ошибки из сохраненной истории
+  DB.ai_chat_history = DB.ai_chat_history.filter(m => {
+    if (!m || !m.text) return false;
+    const t = m.text.toLowerCase();
+    return !t.includes('exceeded your current quota') && 
+           !t.includes('user location is not supported') && 
+           !t.includes('resource_exhausted') &&
+           !t.includes('ошибка gemini api');
+  });
+
   if (DB.ai_chat_history.length === 0) {
     const records = (DB.profile && DB.profile.records) ? DB.profile.records : {};
     const b = records['Жим лёжа'] || 69.3;
