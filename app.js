@@ -3825,7 +3825,12 @@ function renderMatrixModal() {
 
 // ── Start ──
 document.addEventListener('DOMContentLoaded', () => {
-  loadChartJS(() => { loadData(); });
+  loadData();
+  loadChartJS(() => {
+    if (currentTab === 'dashboard' || currentTab === 'analytics') {
+      renderDashboard();
+    }
+  });
   selectDate('today', document.querySelector('.date-chips .chip'));
   updateE1RM();
 });
