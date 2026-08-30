@@ -3622,12 +3622,13 @@ async function sendAiCoachMessage() {
         lastErrMsg = e.message;
       }
     }
-
-    if (!replyText && lastErrMsg) {
-      console.warn('Gemini API Warning:', lastErrMsg);
-      replyText = `⚠️ **Ошибка Gemini API:** ${lastErrMsg}\n\n*Переключаюсь на научную оффлайн-базу:*`;
-    }
   }
+
+  if (!replyText && lastErrMsg) {
+    console.warn('Gemini API Warning:', lastErrMsg);
+    replyText = `⚠️ **Ошибка Gemini API:** ${lastErrMsg}\n\n*Переключаюсь на научную оффлайн-базу:*`;
+  }
+}
 
   if (!replyText) {
     // Evidence-based smart fallback with user's real numbers
