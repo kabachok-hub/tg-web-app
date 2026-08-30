@@ -3529,9 +3529,10 @@ async function sendAiCoachMessage() {
   if (key) {
     // Official production Google AI Studio models in priority order
     const modelsToTry = [
-      'gemini-2.5-flash',
-      'gemini-2.5-pro',
+      'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
+      'gemini-2.5-flash',
+      'gemini-3.1-pro-preview',
       'gemini-flash-latest'
     ];
 
