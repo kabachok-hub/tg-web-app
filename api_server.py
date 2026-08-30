@@ -196,5 +196,59 @@ def ping():
     return jsonify({'status': 'ok', 'time': int(time.time())})
 
 
+@app.route('/api/ai_chat', methods=['POST', 'OPTIONS'])
+def ai_chat():
+    if request.method == 'OPTIONS':
+        return '', 204
+    payload = request.get_json(silent=True) or {}
+    key = payload.get('key', '').strip()
+    contents = payload.get('contents', [])
+    system_instruction = payload.get('systemInstruction')
+    
+    if not key:
+        return jsonify({'error': {'message': 'No API key provided'}}), 400
+        
+    models_to_try = [
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-3.6-flash',
+        'gemini-flash-latest'
+    ]
+    
+    import urllib.request
+    last_err = ''
+    for m in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={key}"
+        body_data = {"contents": contents}
+        if system_instruction:
+            body_data["systemInstruction"] = system_instruction
+            
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(body_data).encode('utf-8'),
+                headers={'Content-Type': 'application/json'}
+            )
+            res = urllib.request.urlopen(req, timeout=20)
+            res_json = json.loads(res.read().decode('utf-8'))
+            if 'candidates' in res_json and res_json['candidates']:
+                return jsonify(res_json)
+        except urllib.error.HTTPError as e:
+            err_b = e.read().decode('utf-8', errors='replace')
+            try:
+                err_j = json.loads(err_b)
+                if e.code == 400 and 'API_KEY_INVALID' in err_b:
+                    return jsonify(err_j), 400
+            except Exception:
+                pass
+            last_err = err_b
+            continue
+        except Exception as e:
+            last_err = str(e)
+            continue
+            
+    return jsonify({'error': {'message': last_err or 'Failed to query Gemini API'}}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
