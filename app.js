@@ -3540,10 +3540,7 @@ async function sendAiCoachMessage() {
     // Official production Google AI Studio models in priority order
     const modelsToTry = [
       'gemini-3.5-flash-lite',
-      'gemini-3.6-flash',
-      'gemini-2.5-flash',
-      'gemini-3.1-pro-preview',
-      'gemini-flash-latest'
+      'gemini-3.6-flash'
     ];
 
     // Build strictly alternating dialog turns (user, model, user, model...)
