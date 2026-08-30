@@ -3172,7 +3172,7 @@ function openAiCoachModal() {
   }
   const inp = $('gemini-api-key-input');
   if (inp) inp.value = DB.gemini_key || '';
-  updateAiCoachKeyStatus();
+  updateAiCoachKeyStatus(true);
   renderAiChatHistory();
   setupCarouselDrag();
 
