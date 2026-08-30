@@ -3617,6 +3617,10 @@ async function sendAiCoachMessage() {
             replyText = `⚠️ **Неверный API-ключ Gemini.** Пожалуйста, проверьте ключ в Google AI Studio.`;
             break;
           }
+          if (resJson.error.code === 429 || lastErrMsg.includes('quota') || lastErrMsg.includes('RESOURCE_EXHAUSTED')) {
+            lastErrMsg = 'Минутный лимит бесплатных запросов Google AI Studio (20 запр/мин). Подождите 20 секунд.';
+            continue; // Пробуем следующую модель
+          }
         }
       } catch (e) {
         lastErrMsg = e.message;
@@ -3626,7 +3630,7 @@ async function sendAiCoachMessage() {
 
   if (!replyText && lastErrMsg) {
     console.warn('Gemini API Warning:', lastErrMsg);
-    replyText = `⚠️ **Ошибка Gemini API:** ${lastErrMsg}\n\n*Переключаюсь на научную оффлайн-базу:*`;
+    replyText = `⏳ **${lastErrMsg}**\n\n*Отвечаю по научной базе тренировок:*\n\n`;
   }
 }
 
