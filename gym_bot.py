@@ -5,9 +5,10 @@
 # ===================================================================================
 # === ИМПОРТЫ ===
 import os
-# Фикс прокси для стабильной работы на PythonAnywhere (исключает ошибку 503 Tunnel Connection)
-os.environ['http_proxy'] = 'http://proxy.server:3128'
-os.environ['https_proxy'] = 'http://proxy.server:3128'
+# Фикс прокси для стабильной работы на PythonAnywhere
+if 'PYTHONANYWHERE_DOMAIN' in os.environ or 'PYTHONANYWHERE_SITE' in os.environ:
+    os.environ['http_proxy'] = 'http://proxy.server:3128'
+    os.environ['https_proxy'] = 'http://proxy.server:3128'
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
@@ -98,7 +99,7 @@ TOKEN = os.environ.get('BOT_TOKEN', '8793508863:AAGt5pqrfPY3tmA4XhleEeOcJUstPQJp
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 import telebot.apihelper as _apihelper
-if os.path.exists('/home/kABACH0k') or 'PYTHONANYWHERE_DOMAIN' in os.environ or 'PYTHONANYWHERE_SITE' in os.environ:
+if 'PYTHONANYWHERE_DOMAIN' in os.environ or 'PYTHONANYWHERE_SITE' in os.environ:
     _apihelper.proxy = {
         'https': 'http://proxy.server:3128',
         'http': 'http://proxy.server:3128'
