@@ -3550,9 +3550,33 @@ async function sendAiCoachMessage() {
 
     let lastErrMsg = '';
 
-    for (const m of modelsToTry) {
-      try {
-        let resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
+    // 1. Сначала отправляем запрос через VDS сервер (обходит гео-блокировку Google в РФ)
+    try {
+      const vdsResp = await fetch(`${API}/ai_chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: chatTurns
+        })
+      });
+      if (vdsResp.ok) {
+        const vdsJson = await vdsResp.json();
+        if (vdsJson.candidates && vdsJson.candidates[0] && vdsJson.candidates[0].content && vdsJson.candidates[0].content.parts && vdsJson.candidates[0].content.parts[0]) {
+          replyText = vdsJson.candidates[0].content.parts[0].text;
+        } else if (vdsJson.error) {
+          lastErrMsg = vdsJson.error.message || 'Ошибка API';
+        }
+      }
+    } catch (e) {
+      console.warn('VDS AI proxy attempt:', e);
+    }
+
+    if (!replyText) {
+      for (const m of modelsToTry) {
+        try {
+          let resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
