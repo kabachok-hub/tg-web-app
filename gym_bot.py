@@ -1657,10 +1657,20 @@ def start_message(message):
             "✅ Детектор плато + прогноз через NumPy\n"
             "✅ PubMed x10 тем — 25+ исследований\n"
             "✅ Таймеры отдыха, разминочная пирамида\n\n"
-            "Команды: /setup /profile /today\n"
+            "Команды: /setup /profile /today /backup\n"
             "Жми кнопку ниже 👇"
         )
         bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=get_main_menu())
+
+@bot.message_handler(commands=['backup', 'export'])
+def backup_command(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "⏳ Формирую полный архив ваших тренировок и данных...")
+    try:
+        from auto_backup import send_backup_to_user
+        send_backup_to_user(chat_id)
+    except Exception as e:
+        bot.send_message(chat_id, f"⚠️ Ошибка создания бэкапа: {e}")
 @bot.message_handler(commands=['setup'])
 def setup_command(message):
     user_id = str(message.chat.id)
