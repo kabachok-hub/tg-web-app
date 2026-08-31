@@ -241,10 +241,7 @@ def query_gemini_coach(user_id, question_text):
 
     models_to_try = [
         'gemini-3.5-flash-lite',
-        'gemini-3.6-flash',
-        'gemini-2.5-flash',
-        'gemini-3.1-pro-preview',
-        'gemini-flash-latest'
+        'gemini-3.6-flash'
     ]
     
     for model in models_to_try:
