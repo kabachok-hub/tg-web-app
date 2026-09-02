@@ -2580,7 +2580,7 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
 
     if (splitType === 'recovery_3d') {
       if (key === 'bench_press') workW = 50.0;
-      else if (key === 'squat') workW = 55.0;
+      else if (key === 'squat') workW = 65.0;
       else if (key === 'deadlift') workW = 70.0;
       else if (key === 'lat_pulldown') workW = 37.5;
       else if (key === 'seated_cable_row') workW = 30.0;
@@ -2778,12 +2778,12 @@ function setProgramWeek(weekNum) {
       round25(bench1rm * 0.551)
     ],
     squat_wed: [
-      round25(squat1rm * 0.611) + lowerProg,
-      round25(squat1rm * 0.806) + lowerProg,
-      round25(squat1rm * 0.722) + lowerProg,
-      round25(squat1rm * 0.861) + lowerProg,
-      round25(squat1rm * 0.917) + lowerProg,
-      round25(squat1rm * 0.556)
+      round25(squat1rm * 0.722) + lowerProg, // W1: 72.2% (~65 кг)
+      round25(squat1rm * 0.785) + lowerProg, // W2: 78.5% (~70 кг)
+      round25(squat1rm * 0.735) + lowerProg, // W3: 73.5% (~65-67.5 кг - сброс волны)
+      round25(squat1rm * 0.835) + lowerProg, // W4: 83.5% (~75 кг)
+      round25(squat1rm * 0.900) + lowerProg, // W5: 90.0% (~80-82.5 кг - пик)
+      round25(squat1rm * 0.556)              // W6: 55.6% (~50 кг - deload)
     ],
     dead_fri: [
       round25(dead1rm * 0.700) + lowerProg,
