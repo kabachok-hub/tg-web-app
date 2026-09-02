@@ -1665,6 +1665,9 @@ def start_message(message):
 @bot.message_handler(commands=['backup', 'export'])
 def backup_command(message):
     chat_id = message.chat.id
+    if str(chat_id) != "1054175856":
+        bot.send_message(chat_id, "⛔ Команда доступна только главному администратору.")
+        return
     bot.send_message(chat_id, "⏳ Формирую полный архив ваших тренировок и данных...")
     try:
         from auto_backup import send_backup_to_user
