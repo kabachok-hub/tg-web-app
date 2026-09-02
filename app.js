@@ -2663,12 +2663,11 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
       },
       {
         day_number: 3,
-        title: 'Пятница • 1. Тяга ➔ 2. Лёгкий присед (45 кг) ➔ 3. Жим лёжа',
+        title: 'Пятница • Становая тяга (База) + Жим лёжа (Объёмный 2x)',
         day_of_week: 'Пятница',
-        focus: 'Deadlift Power + Active Recovery Squat (45 kg) + Volume Bench (Частота 2x PubMed)',
+        focus: 'Deadlift Power + Volume Bench (Частота 2x PubMed) & Upper Back',
         exercises: [
           (function(){ const e = createEx('deadlift', 3, '5-6', 7.5); e.base_weight = 70.0; e.working_weight = 70.0; e.warmup_ladder = getWarmupLadder('deadlift', 70.0, 2, 1); return e; })(),
-          (function(){ const e = createEx('squat_light', 3, '5-6', 6.0); e.base_weight = 45.0; e.working_weight = 45.0; e.warmup_ladder = getWarmupLadder('squat_light', 45.0, 2, 1); return e; })(),
           (function(){ const e = createEx('bench_press_vol', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5, 2, 1); return e; })(),
           (function(){ const e = createEx('lat_pulldown', 4, '8-10', 7.5); e.base_weight = 40.0; e.working_weight = 40.0; return e; })(),
           (function(){ const e = createEx('seated_cable_row', 3, '8-10', 7.5); e.base_weight = 30.0; e.working_weight = 30.0; return e; })()
