@@ -2128,8 +2128,11 @@ const EXERCISE_CATALOG = {
   
   hanging_leg_raises: { key: 'hanging_leg_raises', name: 'Подъемы ног в висе на турнике', muscle: 'Пресс / Кор', category: 'core', type: 'isolation', equipment: 'bodyweight', sets: 2, reps: '12-15', rpe: 7.5, rest: 75, tip: 'Декомпрессия позвоночника и сокращение нижней порции прямой мышцы живота.' },
   crunches: { key: 'crunches', name: 'Скручивания на пресс', muscle: 'Пресс / Кор', category: 'core', type: 'isolation', equipment: 'bodyweight', sets: 1, reps: '50', rpe: 7.0, rest: 60, tip: '1 подход на 50 повторений в конце тренировки для выносливости и тонуса кора.' },
-  hyperextension: { key: 'hyperextension', name: 'Гиперэкстензия (горизонтальная / 45°)', muscle: 'Поясница / Разгибатели', category: 'back', type: 'isolation', equipment: 'bodyweight', sets: 2, reps: '15', rpe: 7.0, rest: 75, tip: 'Закачка крови и синовиальной жидкости в поясничный отдел без осевого отягощения.' },
-  cable_woodchopper: { key: 'cable_woodchopper', name: 'Скручивания на блоке (Молитва)', muscle: 'Пресс', category: 'core', type: 'isolation', equipment: 'cables', sets: 3, reps: '12-15', rpe: 8.0, rest: 60, tip: 'Прогрессивная перегрузка весом для гипертрофии кубиков пресса.' }
+  hyperextension: { key: 'hyperextension', name: 'Гиперэкстензия (горизонтальная / 45°)', muscle: 'Поясница / Разгибатели', category: 'back', type: 'isolation', equipment: 'bodyweight', sets: 2, reps: '15-20', rpe: 7.0, rest: 75, tip: 'Закачка крови и синовиальной жидкости в поясничный отдел без осевого отягощения.' },
+  cable_woodchopper: { key: 'cable_woodchopper', name: 'Скручивания на блоке (Молитва)', muscle: 'Пресс', category: 'core', type: 'isolation', equipment: 'cables', sets: 3, reps: '12-15', rpe: 8.0, rest: 60, tip: 'Прогрессивная перегрузка весом для гипертрофии кубиков пресса.' },
+  shrugs: { key: 'shrugs', name: 'Шраги со штангой / гантелями', muscle: 'Трапеции (верх)', category: 'back', type: 'isolation', equipment: 'barbell', sets: 4, reps: '10-12', rpe: 7.5, rest: 75, tip: 'Изолированная проработка верхней порции трапециевидных мышц.' },
+  squat_light: { key: 'squat_light', name: 'Приседания (Лёгкие / Восстановительные)', muscle: 'Квадрицепс (Active Recovery)', category: 'legs', type: 'compound', equipment: 'barbell', sets: 3, reps: '5-6', rpe: 6.0, rest: 120, tip: 'Лёгкий вес 45 кг усиливает кровоток и ускоряет суперкомпенсацию после среды без утомления ЦНС (Zourdos 2016).' },
+  bench_press_vol: { key: 'bench_press_vol', name: 'Жим лёжа (Объёмный / Техника 2x/нед)', muscle: 'Грудь / Плечевой пояс', category: 'chest', type: 'compound', equipment: 'barbell', sets: 3, reps: '6', rpe: 7.0, rest: 150, tip: 'Отработка траектории и стабильности жима со средней интенсивностью (Schoenfeld 2016).' }
 };
 
 function getWarmupLadder(exKey, workingWeight, dayIdx, weekNum) {
@@ -2220,6 +2223,11 @@ function getWarmupLadder(exKey, workingWeight, dayIdx, weekNum) {
       ladder.push({ step: 3, weight: round25(workingWeight * 0.70), reps: 3, note: 'Скорость' });
       ladder.push({ step: 4, weight: round25(workingWeight * 0.85), reps: 1, note: 'Подводка' });
     }
+  } else if (exKey === 'squat_light') {
+    ladder.push({ step: 1, weight: 20.0, reps: 8, note: 'Пустой гриф (суставная активация)' });
+    ladder.push({ step: 2, weight: 30.0, reps: 6, note: 'Настройка глубины седа' });
+    ladder.push({ step: 3, weight: 40.0, reps: 5, note: 'Подводящий шаг' });
+    ladder.push({ step: 4, weight: 45.0, reps: 5, note: 'Рабочий восстановительный сет' });
   } else if (exKey === 'deadlift') {
     if (weekNum === 1 || (workingWeight >= 67.5 && workingWeight <= 72.5)) {
       ladder.push({ step: 1, weight: 50.0, reps: 5, note: 'Старт, натяг и высота дисков (50%)' });
@@ -2625,11 +2633,47 @@ function generateScientificProgram({ goal, level, days, equipment, split, user1r
   };
 
   if (splitType === 'recovery_3d') {
-    splitName = 'SBD Троеборье: 2 Жима в неделю + Присед + Тяга (PubMed 2x)';
+    splitName = 'SBD Троеборье: 2 Жима + Присед + 1. Тяга ➔ 2. Лёгкий присед (45 кг) ➔ 3. Жим';
     daysLayout = [
-      { day_number: 1, title: 'Понедельник • Жим штанги лёжа (Тяжёлый / Силовой)', day_of_week: 'Понедельник', focus: 'Heavy Bench Press Power', exercises: [(function(){ const e = createEx('bench_press', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('bench_press', 50.0, 0, 1); return e; })()] },
-      { day_number: 2, title: 'Среда • Приседания со штангой (База)', day_of_week: 'Среда', focus: 'Heavy Squat Strength', exercises: [(function(){ const e = createEx('squat', 3, '6', 7.0); e.warmup_ladder = getWarmupLadder('squat', 55.0, 1, 1); return e; })()] },
-      { day_number: 3, title: 'Пятница • Становая тяга + Жим (Объёмный / Техника)', day_of_week: 'Пятница', focus: 'Deadlift Power & Volume Bench (Частота 2x PubMed)', exercises: [(function(){ const e = createEx('deadlift', 3, '5', 7.0); e.warmup_ladder = getWarmupLadder('deadlift', 70.0, 2, 1); return e; })(), (function(){ const e = createEx('bench_press', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5, 2, 1); return e; })()] }
+      {
+        day_number: 1,
+        title: 'Понедельник • Жим штанги лёжа (Силовой) + Спина',
+        day_of_week: 'Понедельник',
+        focus: 'Heavy Bench Press Power & Lat Width',
+        exercises: [
+          (function(){ const e = createEx('bench_press', 3, '4-6', 7.5); e.base_weight = 50.0; e.working_weight = 50.0; e.warmup_ladder = getWarmupLadder('bench_press', 50.0, 0, 1); return e; })(),
+          createEx('pullups', 3, '8-10', 7.5),
+          createEx('hyperextension', 3, '15-20', 7.0),
+          createEx('barbell_biceps_curl', 2, '10', 7.5),
+          createEx('crunches', 1, '30-50', 7.0)
+        ]
+      },
+      {
+        day_number: 2,
+        title: 'Среда • Приседания со штангой (Базовая волна) + Плечи',
+        day_of_week: 'Среда',
+        focus: 'Heavy Squat Strength & Delts/Traps',
+        exercises: [
+          (function(){ const e = createEx('squat', 4, '4-6', 7.5); e.base_weight = 65.0; e.working_weight = 65.0; e.warmup_ladder = getWarmupLadder('squat', 65.0, 1, 1); return e; })(),
+          (function(){ const e = createEx('shrugs', 4, '10-12', 7.5); e.base_weight = 60.0; e.working_weight = 60.0; return e; })(),
+          (function(){ const e = createEx('lateral_raises', 4, '8-10', 8.0); e.base_weight = 8.0; e.working_weight = 8.0; return e; })(),
+          (function(){ const e = createEx('calf_raises', 4, '15', 8.0); e.base_weight = 40.0; e.working_weight = 40.0; return e; })(),
+          createEx('crunches', 1, '50-60', 7.5)
+        ]
+      },
+      {
+        day_number: 3,
+        title: 'Пятница • 1. Тяга ➔ 2. Лёгкий присед (45 кг) ➔ 3. Жим лёжа',
+        day_of_week: 'Пятница',
+        focus: 'Deadlift Power + Active Recovery Squat (45 kg) + Volume Bench (Частота 2x PubMed)',
+        exercises: [
+          (function(){ const e = createEx('deadlift', 3, '5-6', 7.5); e.base_weight = 70.0; e.working_weight = 70.0; e.warmup_ladder = getWarmupLadder('deadlift', 70.0, 2, 1); return e; })(),
+          (function(){ const e = createEx('squat_light', 3, '5-6', 6.0); e.base_weight = 45.0; e.working_weight = 45.0; e.warmup_ladder = getWarmupLadder('squat_light', 45.0, 2, 1); return e; })(),
+          (function(){ const e = createEx('bench_press_vol', 3, '6', 7.0); e.base_weight = 42.5; e.working_weight = 42.5; e.warmup_ladder = getWarmupLadder('bench_press', 42.5, 2, 1); return e; })(),
+          (function(){ const e = createEx('lat_pulldown', 4, '8-10', 7.5); e.base_weight = 40.0; e.working_weight = 40.0; return e; })(),
+          (function(){ const e = createEx('seated_cable_row', 3, '8-10', 7.5); e.base_weight = 30.0; e.working_weight = 30.0; return e; })()
+        ]
+      }
     ];
   } else if (splitType === 'sbd_3d') {
     splitName = 'SBD Троеборье: Присед / Жим / Тяга + Подсобка (3 дня)';
@@ -2815,8 +2859,10 @@ function setProgramWeek(weekNum) {
           ex.working_weight = sbdSchedule.squat_wed[weekNum - 1];
         } else if (ex.key === 'deadlift' && dayIdx === 2) {
           ex.working_weight = sbdSchedule.dead_fri[weekNum - 1];
-        } else if (ex.key === 'bench_press' && dayIdx === 2) {
+        } else if ((ex.key === 'bench_press' || ex.key === 'bench_press_vol') && dayIdx === 2) {
           ex.working_weight = sbdSchedule.bench_fri[weekNum - 1];
+        } else if (ex.key === 'squat_light' && dayIdx === 2) {
+          ex.working_weight = (weekNum === 6) ? 35.0 : (weekNum >= 4 ? 47.5 : 45.0);
         } else {
           if (weekNum === 6) {
             ex.working_weight = ex.base_weight > 0 ? Math.max(10.0, Math.round((ex.base_weight * 0.75) / 2.5) * 2.5) : 0.0;
@@ -2832,7 +2878,7 @@ function setProgramWeek(weekNum) {
         }
       }
 
-      const isMainBase = (idx === 0 || ex.key === 'bench_press' || ex.key === 'squat' || ex.key === 'deadlift');
+      const isMainBase = (idx === 0 || ex.key === 'bench_press' || ex.key === 'squat' || ex.key === 'deadlift' || ex.key === 'squat_light' || ex.key === 'bench_press_vol');
       ex.warmup_ladder = (isMainBase && ex.working_weight > 0) ? getWarmupLadder(ex.key || 'bench_press', ex.working_weight, dayIdx, weekNum) : [];
 
       // Reps & Sets scaling for True Wave
