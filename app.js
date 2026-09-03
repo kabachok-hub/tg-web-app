@@ -82,6 +82,25 @@ function switchTab(name) {
   else if (name === 'profile') renderProfile();
 }
 
+function deduplicateWorkouts(workouts) {
+  if (!Array.isArray(workouts)) return [];
+  const seen = new Set();
+  const cleaned = [];
+  for (const w of workouts) {
+    if (!w) continue;
+    const d = String(w.date || '').trim();
+    const ex = String(w.exercise || '').trim().toLowerCase();
+    const setNum = String(w.set_num || '');
+    const wt = parseFloat(w.weight) || 0;
+    const reps = String(w.reps || '').trim();
+    const sig = `${d}|${ex}|${setNum}|${wt}|${reps}`;
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    cleaned.push(w);
+  }
+  return cleaned;
+}
+
 // ── Load Data ──
 async function loadData() {
   const uid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
@@ -107,6 +126,9 @@ async function loadData() {
       }
     });
   }
+
+  // Убираем любые дубликаты из localStorage
+  DB.workouts = deduplicateWorkouts(DB.workouts);
 
   if (!hasValidProgram(DB.program)) {
     DB.program = getDefaultPersonalProgram();
@@ -147,7 +169,7 @@ async function loadData() {
               localMap.set(wid, sw);
             }
           });
-          DB.workouts = Array.from(localMap.values());
+          DB.workouts = deduplicateWorkouts(Array.from(localMap.values()));
           if (Array.isArray(serverData.ai_chat_history) && serverData.ai_chat_history.length > 0 && (!DB.ai_chat_history || DB.ai_chat_history.length === 0)) {
             DB.ai_chat_history = serverData.ai_chat_history;
           }
@@ -168,6 +190,7 @@ async function loadData() {
 let deletedIds = [];
 
 async function saveData() {
+  DB.workouts = deduplicateWorkouts(DB.workouts);
   localStorage.setItem('gym_db', JSON.stringify(DB));
   const uid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
   if (!uid) return;
