@@ -36,6 +36,26 @@ def cors(resp):
     resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
     return resp
 
+def _dedup_workouts(workouts):
+    if not isinstance(workouts, list):
+        return []
+    seen = set()
+    cleaned = []
+    for w in workouts:
+        if not isinstance(w, dict):
+            continue
+        d = str(w.get('date', '')).strip()
+        ex = str(w.get('exercise', '')).strip().lower()
+        s = str(w.get('set_num', ''))
+        wt = str(w.get('weight', 0))
+        r = str(w.get('reps', '')).strip()
+        sig = f"{d}|{ex}|{s}|{wt}|{r}"
+        if sig in seen:
+            continue
+        seen.add(sig)
+        cleaned.append(w)
+    return cleaned
+
 @app.route('/api/data', methods=['GET', 'OPTIONS'])
 def get_data():
     if request.method == 'OPTIONS':
@@ -51,7 +71,7 @@ def get_data():
         with _lock:
             with open(DB_FILE, 'r', encoding='utf-8') as f:
                 db = json.load(f)
-        result['workouts'] = db.get(str(uid), [])
+        result['workouts'] = _dedup_workouts(db.get(str(uid), []))
 
     # Загружаем профиль и историю AI
     if os.path.exists(PROFILE_FILE):
@@ -129,7 +149,7 @@ def save_data():
             else:
                 current_map[wid] = w
                 added += 1
-        db[uid] = list(current_map.values())
+        db[uid] = _dedup_workouts(list(current_map.values()))
                 
         with open(DB_FILE, 'w', encoding='utf-8') as f:
             json.dump(db, f, ensure_ascii=False, indent=2)
