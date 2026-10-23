@@ -64,11 +64,11 @@
       </svg>
       <div class="ring-center">
         <span id="recovery-pct">--</span>
-        <small>% ЦНС</small>
+        <small>статус</small>
       </div>
     </div>
     <div class="recovery-info">
-      <h3>Восстановление ЦНС</h3>
+      <h3>Статус восстановления</h3>
       <p id="recovery-status">Загрузка данных...</p>
       <div class="recovery-pills" id="recovery-pills"></div>
     </div>
@@ -77,9 +77,9 @@
   <!-- Program Quick Banner (on Dashboard) -->
   <div class="program-quick-card glass" id="dash-program-banner" onclick="switchTab('program')">
     <div class="program-quick-left">
-      <span class="badge" style="background: rgba(124,92,255,0.25); color: #bca6ff; border: 1px solid rgba(124,92,255,0.4);">🧬 Научная программа</span>
+      <span class="badge" style="background: rgba(124,92,255,0.25); color: #bca6ff; border: 1px solid rgba(124,92,255,0.4);">Шаблон программы</span>
       <h3 id="dash-prog-title" style="margin-top: 4px; font-size: 0.95rem;">Составить тренировочный сплит</h3>
-      <p id="dash-prog-sub" style="font-size: 0.76rem; color: var(--text2); margin-top: 2px;">Авторегуляция RPE, разминки и 6-недельная матрица</p>
+      <p id="dash-prog-sub" style="font-size: 0.76rem; color: var(--text2); margin-top: 2px;">Шаблоны программ, разминка и дневник усилия</p>
     </div>
     <button class="icon-action-btn">→</button>
   </div>
@@ -148,7 +148,7 @@
   </div>
 
   <!-- PR Records -->
-  <div class="section-title">🏆 Личные рекорды</div>
+  <div class="section-title">🏆 Лучшие записанные подходы и расчётный e1RM</div>
   <div class="pr-list" id="pr-list"></div>
 </section>
 
@@ -156,8 +156,8 @@
 <section id="tab-program" class="tab">
   <header class="page-header">
     <div class="header-left">
-      <h1>🧬 Научная программа</h1>
-      <p class="subtitle" id="prog-header-subtitle">Evidence-Based Training & Periodization</p>
+      <h1>Шаблоны программ тренировок</h1>
+      <p class="subtitle" id="prog-header-subtitle">Стартовые структуры для индивидуальной настройки</p>
     </div>
     <button class="chip" id="prog-rebuild-btn" onclick="openProgramWizard()" style="display:none">🔄 Сменить</button>
   </header>
@@ -263,39 +263,80 @@
     <input type="range" id="reps-slider" min="1" max="50" step="1" value="8" class="slider" oninput="updateRepsFromSlider(this.value)"/>
   </div>
 
-  <!-- RPE for this set -->
-  <div class="section-title">Оценка подхода (RPE для этого сета)</div>
-  <div class="rpe-buttons">
-    <button class="rpe-btn green active" onclick="selectRPE('Легко', this)">🟢 Легко</button>
-    <button class="rpe-btn yellow" onclick="selectRPE('Средне', this)">🟡 Средне</button>
-    <button class="rpe-btn red" onclick="selectRPE('Тяжело', this)">🔴 Тяжело</button>
+  <!-- Set Role -->
+  <div class="section-title">🎯 Роль подхода</div>
+  <div class="role-selector-bar" id="role-selector-bar" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+    <button type="button" class="chip role-chip" data-role="warmup" onclick="selectSetRole('warmup', this)">🔥 Разминка</button>
+    <button type="button" class="chip role-chip active" data-role="working" onclick="selectSetRole('working', this)">💪 Рабочий</button>
+    <button type="button" class="chip role-chip" data-role="top_set" onclick="selectSetRole('top_set', this)">⚡ Топ-сет</button>
+    <button type="button" class="chip role-chip" data-role="backoff" onclick="selectSetRole('backoff', this)">🔄 Back-off</button>
+    <button type="button" class="chip role-chip" data-role="amrap" onclick="selectSetRole('amrap', this)">💥 AMRAP</button>
+    <button type="button" class="chip role-chip" data-role="unknown" onclick="selectSetRole('unknown', this)">⚪ Не указано</button>
   </div>
 
-  <!-- RIR (Reps in Reserve) -->
-  <div class="section-title">🔋 Запас повторений (RIR)
-    <span class="rir-hint">сколько мог ещё сделать</span>
+  <!-- Question: Сколько чистых повторов оставалось в запасе? (RIR) -->
+  <div class="section-title">🔋 Сколько чистых повторов оставалось в запасе?
+    <span class="rir-hint">RIR конкретного подхода; необязательно</span>
   </div>
-  <div class="rir-buttons" id="rir-buttons">
-    <button class="rir-btn active" id="rir-0" onclick="selectRIR(0, this)">
-      <span class="rir-icon">💀</span>
-      <span class="rir-label">Отказ</span>
-      <span class="rir-sub">+0</span>
+  <div class="rir-buttons rir-buttons-v2" id="rir-buttons">
+    <button type="button" class="rir-btn" id="rir-btn-0" onclick="selectExactRIR('0', this)">
+      <span class="rir-icon">0️⃣</span>
+      <span class="rir-label">0 в запасе</span>
+      <span class="rir-sub">RIR 0</span>
     </button>
-    <button class="rir-btn" id="rir-1" onclick="selectRIR(1, this)">
-      <span class="rir-icon">🔥</span>
-      <span class="rir-label">1 осталось</span>
-      <span class="rir-sub">+1</span>
+    <button type="button" class="rir-btn" id="rir-btn-1" onclick="selectExactRIR('1', this)">
+      <span class="rir-icon">1️⃣</span>
+      <span class="rir-label">1 в запасе</span>
+      <span class="rir-sub">RIR 1</span>
     </button>
-    <button class="rir-btn" id="rir-2" onclick="selectRIR(2, this)">
-      <span class="rir-icon">💪</span>
-      <span class="rir-label">2 осталось</span>
-      <span class="rir-sub">+2</span>
+    <button type="button" class="rir-btn" id="rir-btn-2" onclick="selectExactRIR('2', this)">
+      <span class="rir-icon">2️⃣</span>
+      <span class="rir-label">2 в запасе</span>
+      <span class="rir-sub">RIR 2</span>
     </button>
-    <button class="rir-btn" id="rir-3" onclick="selectRIR(3, this)">
-      <span class="rir-icon">😎</span>
-      <span class="rir-label">3+ осталось</span>
-      <span class="rir-sub">+3</span>
+    <button type="button" class="rir-btn" id="rir-btn-3" onclick="selectExactRIR('3', this)">
+      <span class="rir-icon">3️⃣</span>
+      <span class="rir-label">3 в запасе</span>
+      <span class="rir-sub">RIR 3</span>
     </button>
+    <button type="button" class="rir-btn" id="rir-btn-4plus" onclick="selectExactRIR('4+', this)">
+      <span class="rir-icon">4️⃣⁺</span>
+      <span class="rir-label">4+ в запасе</span>
+      <span class="rir-sub">RIR 4+</span>
+    </button>
+    <button type="button" class="rir-btn rir-btn-skip" id="rir-btn-skip" onclick="selectExactRIR(null, this)" title="Оставить без точного RIR">
+      <span class="rir-icon">🤷</span>
+      <span class="rir-label">Не уверен</span>
+      <span class="rir-sub">Пропуск</span>
+    </button>
+  </div>
+
+  <!-- Verbal categories with explicit ranges -->
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+    <div class="section-title" style="margin-bottom:0;">🏷 Диапазон тяжести
+      <span class="rir-hint">синхронизирован с RIR или быстрый выбор диапазона</span>
+    </div>
+    <span id="effort-status-hint" style="font-size:0.74rem; font-weight:600; color:var(--text2);">Оценка: не указана</span>
+  </div>
+  <div class="rpe-buttons" id="effort-band-buttons">
+    <button type="button" class="rpe-btn green" id="band-btn-easy" onclick="selectEffortBand('easy', this)">
+      🟢 Легко <small style="display:block; font-size:0.68rem; opacity:0.85;">(4+ в запасе)</small>
+    </button>
+    <button type="button" class="rpe-btn yellow" id="band-btn-moderate" onclick="selectEffortBand('moderate', this)">
+      🟡 Средне <small style="display:block; font-size:0.68rem; opacity:0.85;">(2–3 в запасе)</small>
+    </button>
+    <button type="button" class="rpe-btn red" id="band-btn-hard" onclick="selectEffortBand('hard', this)">
+      🔴 Тяжело <small style="display:block; font-size:0.68rem; opacity:0.85;">(0–1 в запасе)</small>
+    </button>
+  </div>
+
+  <!-- Failed Attempt Toggle (Independent of RIR 0) -->
+  <div class="failed-attempt-box glass" style="margin:12px 0 16px 0; padding:10px 14px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:space-between; border:1px solid rgba(255,255,255,0.08);">
+    <label for="failed-attempt-checkbox" style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:0.82rem; font-weight:600; color:var(--text);">
+      <input type="checkbox" id="failed-attempt-checkbox" onchange="toggleFailedAttempt(this.checked)" style="width:18px; height:18px; accent-color:#ff4d6d; cursor:pointer;">
+      <span>⚠️ Неудачная попытка (срыв / не дожал повтор)</span>
+    </label>
+    <span style="font-size:0.68rem; color:var(--text2); max-width:180px; text-align:right;">Не выводится из RIR 0; фиксирует фактический срыв</span>
   </div>
 
   <!-- 1RM Preview -->
@@ -381,8 +422,8 @@
   <div class="section-title">🚀 Топ-3 прогресса за 30 дней</div>
   <div class="pr-list" id="top3-progress"></div>
 
-  <!-- Plateau Detector -->
-  <div class="section-title">⚠️ Детектор плато</div>
+  <!-- Simplified comparison of estimated 1RM values -->
+  <div class="section-title">Сравнение динамики расчётного 1ПМ</div>
   <div class="plateau-list" id="plateau-list"></div>
 </section>
 
@@ -613,7 +654,7 @@
         <button class="chip" onclick="setCoachPrompt('Сколько белка и калорий мне нужно для роста мышц и быстрого восстановления?')">🥩 Белок и питание</button>
         <button class="chip" onclick="setCoachPrompt('Как правильно размяться и подвестись к рабочим весам по науке?')">⚡ Разминка и лесенка</button>
         <button class="chip" onclick="setCoachPrompt('Чем безопасно заменить становую тягу или присед, если устала спина?')">🧬 Замена упражнений</button>
-        <button class="chip" onclick="setCoachPrompt('Как ускорить восстановление ЦНС и связок после тяжелой тренировки?')">🧘 Отдых и ЦНС</button>
+        <button class="chip" onclick="setCoachPrompt('Как оценить самочувствие после тяжёлой тренировки?')">🧘 Отдых и ЦНС</button>
         <button class="chip" onclick="setCoachPrompt('Как правильно принимать креатин и сколько воды пить в день?')">💊 Креатин и добавки</button>
       </div>
 

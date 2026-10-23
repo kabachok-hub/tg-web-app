@@ -1444,3 +1444,65 @@ svg defs { display: block; }
   transform: translateY(-1px);
 }
 
+
+
+/* ── EFFORT SPEC v2 STYLES ── */
+.rir-buttons-v2 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+@media (max-width: 500px) {
+  .rir-buttons-v2 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+#rir-btn-0.active { border-color: #ff4d6d; background: rgba(255,77,109,0.18); box-shadow: 0 0 14px rgba(255,77,109,0.3); }
+#rir-btn-1.active { border-color: #ff9c33; background: rgba(255,156,51,0.18); box-shadow: 0 0 14px rgba(255,156,51,0.3); }
+#rir-btn-2.active { border-color: #ffd700; background: rgba(255,215,0,0.18);  box-shadow: 0 0 14px rgba(255,215,0,0.3); }
+#rir-btn-3.active { border-color: #a3e635; background: rgba(163,230,53,0.18); box-shadow: 0 0 14px rgba(163,230,53,0.3); }
+#rir-btn-4plus.active { border-color: #00e096; background: rgba(0,224,150,0.18);  box-shadow: 0 0 14px rgba(0,224,150,0.3); }
+#rir-btn-skip.active { border-color: #94a3b8; background: rgba(148,163,184,0.18); box-shadow: 0 0 14px rgba(148,163,184,0.3); }
+
+.role-chip {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.76rem;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text2);
+  transition: all 0.15s ease;
+}
+.role-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+.role-chip.active {
+  border-color: var(--accent);
+  background: rgba(124, 92, 255, 0.22);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(124, 92, 255, 0.3);
+}
+
+.failed-attempt-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.role-badge-pill {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
