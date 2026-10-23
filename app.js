@@ -272,46 +272,11 @@ function renderDashboard() {
     if (subEl) subEl.textContent = 'Шаблоны программ, разминка и дневник усилия';
   }
 
-  renderRecovery();
   renderLastWorkout();
   renderPRList();
   renderHealthTracker();
 }
 
-function renderRecovery() {
-  const ws = DB.workouts || [];
-  const now = new Date();
-  const cutoff7 = new Date(now - 7 * 24 * 3600 * 1000);
-  const recent = ws.filter(w => {
-    const d = parseDate(w.date);
-    return d && d >= cutoff7;
-  });
-  const lastByExercise = new Map();
-  recent.forEach(w => {
-    if (!w.exercise) return;
-    const d = parseDate(w.date);
-    const prev = lastByExercise.get(w.exercise);
-    if (!prev || d > prev) lastByExercise.set(w.exercise, d);
-  });
-
-  const pills = $('recovery-pills');
-  pills.innerHTML = '';
-  [...lastByExercise.entries()].slice(0, 6).forEach(([exercise, date]) => {
-    const pill = document.createElement('span');
-    pill.className = 'pill';
-    const daysAgo = Math.max(0, Math.floor((now - date) / 86400000));
-    pill.textContent = exercise.split(' ')[0] + ' · ' + daysAgo + ' дн. назад';
-    pills.appendChild(pill);
-  });
-
-  $('recovery-pct').textContent = '—';
-  $('recovery-circle').style.strokeDashoffset = 314;
-  $('recovery-status').textContent =
-    'Готовность к нагрузке не рассчитывается по процентам: дневник не измеряет восстановление мышц или ЦНС. Ориентируйся на план тренера, технику, самочувствие и медицинские ограничения.';
-  if (!lastByExercise.size) {
-    pills.textContent = 'За последние 7 дней записей нет.';
-  }
-}
 function renderLastWorkout() {
   const ws = DB.workouts || [];
   if (!ws.length) return;

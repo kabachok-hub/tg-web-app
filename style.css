@@ -112,36 +112,6 @@ body {
 .streak-badge span { font-size: 1.4rem; font-weight: 900; line-height: 1; }
 .streak-badge small { font-size: 16px; }
 
-/* ── Recovery Card ── */
-.recovery-card {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  padding: 20px;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, rgba(124,92,255,0.15), rgba(0,229,200,0.08));
-  border: 1px solid rgba(124,92,255,0.3);
-}
-.recovery-ring-wrap { position: relative; flex-shrink: 0; }
-.ring { width: 90px; height: 90px; transform: rotate(-90deg); }
-.ring-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 10; }
-.ring-fill { fill: none; stroke: url(#grad); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 314; transition: stroke-dashoffset 1s ease; }
-.ring-center {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  text-align: center;
-}
-.ring-center span { font-size: 1.1rem; font-weight: 800; }
-.ring-center small { display: block; font-size: 0.65rem; color: var(--text2); }
-.recovery-info h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
-.recovery-info p { font-size: 0.8rem; color: var(--text2); margin-bottom: 8px; }
-.recovery-pills { display: flex; flex-wrap: wrap; gap: 4px; }
-.pill {
-  font-size: 0.7rem; padding: 2px 8px;
-  border-radius: 20px; border: 1px solid;
-}
-.pill.green { color: var(--green); border-color: var(--green); }
-.pill.yellow { color: var(--yellow); border-color: var(--yellow); }
-.pill.red { color: var(--red); border-color: var(--red); }
 
 /* ── Stats Grid ── */
 .stats-grid {
