@@ -148,7 +148,10 @@ async function loadData() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
-      const r = await fetch(`${API}/data?uid=${uid}`, { signal: controller.signal });
+      const initData = tg && tg.initData ? tg.initData : '';
+      const reqHeaders = {};
+      if (initData) reqHeaders['X-Telegram-Init-Data'] = initData;
+      const r = await fetch(`${API}/data?uid=${uid}`, { headers: reqHeaders, signal: controller.signal });
       clearTimeout(timeoutId);
       if (r.ok) {
         const serverData = await r.json();
@@ -197,9 +200,7 @@ async function saveData() {
 
 // ── Init ──
 function initUI() {
-  if (!DB.workouts || DB.workouts.length === 0) {
-    DB.workouts = Array.isArray(SEEDED_WORKOUTS) ? [...SEEDED_WORKOUTS] : [];
-  }
+  if (!DB.workouts) { DB.workouts = []; }
   if (!DB.profile) DB.profile = {};
   if (!DB.profile.records || Object.keys(DB.profile.records).length === 0) {
     DB.profile.records = {};
