@@ -144,7 +144,7 @@ async function loadData() {
   initUI();
 
   // 5. Фоновая синхронизация с сервером (если сервер доступен)
-  if (uid) {
+  if (uid && tg && tg.initData) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -187,13 +187,15 @@ async function saveData() {
   DB.workouts = deduplicateWorkouts(DB.workouts);
   localStorage.setItem('gym_db', JSON.stringify(DB));
   const uid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
-  if (!uid) return;
+  const initData = tg && tg.initData ? tg.initData : '';
+  if (!uid || !initData) return;
   try {
-    await fetch(`${API}/save`, { 
+    const response = await fetch(`${API}/save`, { 
       method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
+      headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData }, 
       body: JSON.stringify({ uid, data: DB, deleted_ids: deletedIds }) 
     });
+    if (!response.ok) throw new Error(`Save failed: ${response.status}`);
     deletedIds = []; // Очищаем после успешного сохранения
   } catch (e) { }
 }
@@ -3138,10 +3140,18 @@ async function saveGeminiApiKey() {
   try {
     const r = await fetch(`${API}/ai_chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': tg && tg.initData ? tg.initData : '' },
       body: JSON.stringify({ key, contents: [{ parts: [{ text: 'ping' }] }] })
     });
     const resJson = await r.json();
+    if (!r.ok) {
+      const errorMessage = typeof resJson.error === 'string'
+        ? resJson.error
+        : (resJson.error && resJson.error.message) || 'Не удалось проверить API-ключ';
+      showToast(`⚠️ ${errorMessage}`);
+      updateAiCoachKeyStatus(false, errorMessage);
+      return;
+    }
     if (resJson.candidates && resJson.candidates[0]) {
       showToast('✅ Gemini AI подключен и активен!');
       updateAiCoachKeyStatus(true);
@@ -3153,8 +3163,8 @@ async function saveGeminiApiKey() {
       updateAiCoachKeyStatus(true);
     }
   } catch (e) {
-    showToast('✅ Ключ сохранён!');
-    updateAiCoachKeyStatus(true);
+    showToast('⚠️ Не удалось связаться с API для проверки ключа');
+    updateAiCoachKeyStatus(false, 'API недоступен');
   }
 }
 
@@ -3421,7 +3431,7 @@ async function sendAiCoachMessage() {
     try {
       const vdsResp = await fetch(`${API}/ai_chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': tg && tg.initData ? tg.initData : '' },
         body: JSON.stringify({
           key,
           systemInstruction: { parts: [{ text: systemPrompt }] },
