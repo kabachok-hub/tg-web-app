@@ -245,12 +245,13 @@ function setupSVGGradient() {
 function renderDashboard() {
   const ws = DB.workouts || [];
   const days = [...new Set(ws.map(w => w.date))];
-  const tonnage = ws.reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
+  const tonnage = ws.filter(isVolumeCountedSet).reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
   const allE1rm = ws.filter(w => w.weight > 0).map(w => epley(w.weight, w.reps));
   const max1rm = allE1rm.length ? Math.max(...allE1rm) : 0;
 
   $('stat-sessions').textContent = days.length;
   $('stat-tonnage').textContent = tonnage > 1000 ? (tonnage / 1000).toFixed(1) + 'т' : Math.round(tonnage);
+  $('stat-tonnage').title = 'Тоннаж без разминочных подходов; записи без указанной роли включены';
   $('stat-1rm').textContent = max1rm ? max1rm + 'кг' : '—';
 
   // Streak
@@ -288,8 +289,8 @@ function renderLastWorkout() {
   card.innerHTML = `<div style="font-size:.75rem;color:var(--text2);margin-bottom:8px">📅 ${lastDate}</div>`;
   exs.forEach(ex => {
     const sets = last.filter(w => w.exercise === ex);
-    const tonnage = sets.reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
-    card.innerHTML += `<div class="workout-row"><span class="workout-ex">${ex}</span><span class="workout-detail">${sets.length} подх · ${Math.round(tonnage)} кг</span></div>`;
+    const tonnage = sets.filter(isVolumeCountedSet).reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
+    card.innerHTML += `<div class="workout-row"><span class="workout-ex">${ex}</span><span class="workout-detail" title="Тоннаж без разминки; подходы без роли включены">${sets.length} подх · ${Math.round(tonnage)} кг</span></div>`;
   });
 }
 
@@ -698,6 +699,7 @@ let pendingSetEffort = {
   failed_attempt: false,  // boolean
   set_role: "working"     // default: working
 };
+let effortEditTarget = null;
 
 function rirToEffortBand(rirVal) {
   if (rirVal === null || rirVal === undefined || rirVal === '') return null;
@@ -717,9 +719,9 @@ function normalizeSetEffort(s) {
   }
   if (s.effort_version === 2) {
     let rir = s.rir !== undefined && s.rir !== null ? String(s.rir) : null;
-    let band = s.effort_band || null;
-    if (!band && rir !== null) band = rirToEffortBand(rir);
-    let source = s.effort_source || (rir !== null ? 'exact_rir' : (band ? 'reported_band' : 'unknown'));
+    let band = rir !== null ? rirToEffortBand(rir) : (s.effort_band || null);
+    let source = rir !== null ? 'exact_rir' : (s.effort_source || 'unknown');
+    if (source === 'unknown') source = band ? 'reported_band' : 'unknown';
     return {
       effort_version: 2,
       rir: rir,
@@ -734,19 +736,19 @@ function normalizeSetEffort(s) {
   if (s.rir !== undefined && s.rir !== null && s.rir !== '' && !isNaN(parseFloat(s.rir))) {
     rir = String(s.rir);
   }
-  let diffStr = String(s.diff || s.rpe || '').trim();
+  let diffStr = String(s.diff || s.rpe || '').trim().toLowerCase();
   let band = null;
   let source = 'unknown';
   if (rir !== null) {
     source = 'exact_rir';
     band = rirToEffortBand(rir);
-  } else if (diffStr === 'Легко') {
+  } else if (diffStr === 'легко' || diffStr === 'easy') {
     band = 'easy';
     source = 'reported_band';
-  } else if (diffStr === 'Средне' || diffStr === 'Средно') {
+  } else if (diffStr === 'средне' || diffStr === 'средно' || diffStr === 'moderate' || diffStr === 'medium') {
     band = 'moderate';
     source = 'reported_band';
-  } else if (diffStr === 'Тяжело') {
+  } else if (diffStr === 'тяжело' || diffStr === 'hard') {
     band = 'hard';
     source = 'reported_band';
   }
@@ -758,6 +760,29 @@ function normalizeSetEffort(s) {
     failed_attempt: !!s.failed_attempt,
     set_role: s.set_role || 'unknown'
   };
+}
+
+function getVolumeRole(s) {
+  const role = normalizeSetEffort(s).set_role;
+  return ['warmup', 'working', 'top_set', 'backoff', 'amrap'].includes(role) ? role : 'unknown';
+}
+
+function isVolumeCountedSet(s) {
+  return getVolumeRole(s) !== 'warmup';
+}
+
+function formatEffortForAI(s) {
+  const norm = normalizeSetEffort(s);
+  const role = (SET_ROLES[norm.set_role] || SET_ROLES.unknown).label;
+  const band = EFFORT_BANDS[norm.effort_band];
+  let effort = 'оценка усилия не указана';
+  if (norm.effort_source === 'exact_rir') {
+    effort = `точный RIR ${norm.rir}${band ? ` (${band.label}; ${band.range} повтора в запасе)` : ''}`;
+  } else if (norm.effort_source === 'reported_band') {
+    effort = `${band ? `${band.label} [${band.range}]` : 'словесный диапазон'}; точный RIR не указан`;
+  }
+  const failed = norm.failed_attempt ? '; отмечена неудачная попытка/срыв' : '';
+  return `${role}; ${effort}${failed}`;
 }
 
 function selectExactRIR(val, el) {
@@ -876,27 +901,7 @@ function resetRIR() {
 }
 
 function toggleSetEffort(setIndex) {
-  if (!workout.sets[setIndex]) return;
-  const s = workout.sets[setIndex];
-  // Cycle between effort states safely without corrupting data
-  if (s.effort_source === 'exact_rir') {
-    if (s.rir === '2') { s.rir = '1'; s.effort_band = 'hard'; }
-    else if (s.rir === '1') { s.rir = '0'; s.effort_band = 'hard'; }
-    else if (s.rir === '0') { s.rir = null; s.effort_band = 'hard'; s.effort_source = 'reported_band'; }
-    else { s.rir = '2'; s.effort_band = 'moderate'; }
-  } else if (s.effort_source === 'reported_band') {
-    if (s.effort_band === 'hard') { s.effort_band = 'moderate'; }
-    else if (s.effort_band === 'moderate') { s.effort_band = 'easy'; }
-    else { s.effort_band = null; s.effort_source = 'unknown'; }
-  } else {
-    s.effort_source = 'exact_rir';
-    s.rir = '2';
-    s.effort_band = 'moderate';
-  }
-  const bInfo = EFFORT_BANDS[s.effort_band];
-  s.diff = bInfo ? bInfo.label : (s.rir !== null ? 'RIR ' + s.rir : 'Не указано');
-  s.rpe = s.diff;
-  renderSetsLog();
+  openEffortEditModal('session', setIndex);
 }
 
 function toggleSetRole(setIndex) {
@@ -916,6 +921,92 @@ function toggleSetFailed(setIndex) {
 
 function toggleSetRPE(setIndex) {
   toggleSetEffort(setIndex);
+}
+
+function getEffortEditSet() {
+  if (!effortEditTarget) return null;
+  if (effortEditTarget.scope === 'session') {
+    return workout.sets[effortEditTarget.index] || null;
+  }
+  return (DB.workouts || []).find(w => String(w.id) === String(effortEditTarget.id)) || null;
+}
+
+function openEffortEditModal(scope, reference, event) {
+  if (event) event.stopPropagation();
+  effortEditTarget = scope === 'session'
+    ? { scope, index: Number(reference) }
+    : { scope: 'history', id: String(reference) };
+  const set = getEffortEditSet();
+  const modal = $('effort-edit-modal');
+  if (!set || !modal) { effortEditTarget = null; return; }
+
+  const norm = normalizeSetEffort(set);
+  const role = SET_ROLES[norm.set_role] || SET_ROLES.unknown;
+  const band = EFFORT_BANDS[norm.effort_band];
+  const currentEffort = norm.effort_source === 'exact_rir'
+    ? `RIR ${norm.rir} (${band ? band.label : 'диапазон не указан'})`
+    : norm.effort_source === 'reported_band'
+      ? `${band ? band.label : 'Диапазон'}${band ? ` [${band.range}]` : ''}; точный RIR не указан`
+      : 'оценка не указана';
+  const context = $('effort-edit-context');
+  if (context) context.textContent = `${set.exercise || 'Упражнение'} · ${set.weight || 0} кг × ${set.reps || 0} · ${role.label} · Сейчас: ${currentEffort}`;
+  const failed = $('effort-edit-failed');
+  if (failed) failed.checked = !!norm.failed_attempt;
+  modal.style.display = 'flex';
+}
+
+function closeEffortEditModal() {
+  const modal = $('effort-edit-modal');
+  if (modal) modal.style.display = 'none';
+  effortEditTarget = null;
+}
+
+function persistEffortEditSet(set) {
+  const band = EFFORT_BANDS[set.effort_band];
+  set.effort_version = 2;
+  set.diff = band ? band.label : 'Не указано';
+  set.rpe = set.diff; // Legacy display compatibility; this is not numeric RPE.
+
+  if (effortEditTarget && effortEditTarget.scope === 'session') {
+    renderSetsLog();
+    return;
+  }
+
+  localStorage.setItem('gym_db', JSON.stringify(DB));
+  renderDiary(diaryDays);
+  saveData();
+}
+
+function saveEffortEdit(source, value) {
+  const set = getEffortEditSet();
+  if (!set) { closeEffortEditModal(); return; }
+
+  if (source === 'exact_rir') {
+    if (!['0', '1', '2', '3', '4+'].includes(String(value))) return;
+    set.rir = String(value);
+    set.effort_band = rirToEffortBand(set.rir);
+    set.effort_source = 'exact_rir';
+  } else if (source === 'reported_band') {
+    if (!EFFORT_BANDS[value]) return;
+    set.rir = null;
+    set.effort_band = value;
+    set.effort_source = 'reported_band';
+  } else {
+    set.rir = null;
+    set.effort_band = null;
+    set.effort_source = 'unknown';
+  }
+
+  persistEffortEditSet(set);
+  closeEffortEditModal();
+  showToast(source === 'unknown' ? 'Оценка очищена' : 'Оценка подхода сохранена');
+}
+
+function saveEffortEditFailure(checked) {
+  const set = getEffortEditSet();
+  if (!set) return;
+  set.failed_attempt = !!checked;
+  persistEffortEditSet(set);
 }
 
 function updateE1RM() {
@@ -1208,7 +1299,7 @@ function renderDiary(days) {
     const ex = w.exercise || 'Неизвестно';
     if (!byDate[d][ex]) byDate[d][ex] = { sets: [], rpe: null };
     byDate[d][ex].sets.push(w);
-    // Track hardest RPE for exercise — strict > to avoid last-set overwrite bug
+    // Track the hardest recorded effort category — strict > avoids last-set overwrite.
     const rpeRank = { 'Тяжело': 3, 'Средне': 2, 'Средно': 2, 'Легко': 1 };
     const r = w.rpe || w.diff || 'Не указано';
     if (byDate[d][ex].rpe === null || (rpeRank[r] || 0) > (rpeRank[byDate[d][ex].rpe] || 0)) byDate[d][ex].rpe = r;
@@ -1227,10 +1318,12 @@ function renderDiary(days) {
   if (!dates.length) { list.innerHTML = '<p class="empty-state">Нет тренировок за период</p>'; return; }
   list.innerHTML = dates.map(date => {
     const exs = byDate[date];
-    const dayTonnage = Object.values(exs).flatMap(e => e.sets).reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
+    const allDaySets = Object.values(exs).flatMap(e => e.sets);
+    const dayTonnage = allDaySets.filter(isVolumeCountedSet).reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
     const numSets = Object.values(exs).reduce((s, e) => s + e.sets.length, 0);
-    const warmupSets = Object.values(exs).flatMap(e => e.sets).filter(w => w.set_role === 'warmup').length;
-    const setsDisplay = warmupSets > 0 ? `${numSets - warmupSets} раб. (${numSets} всего)` : `${numSets} подходов`;
+    const warmupSets = allDaySets.filter(w => getVolumeRole(w) === 'warmup').length;
+    const unknownRoleSets = allDaySets.filter(w => getVolumeRole(w) === 'unknown').length;
+    const setsDisplay = warmupSets > 0 ? `${numSets - warmupSets} в объёме (${warmupSets} разм.; ${unknownRoleSets} без роли)` : `${numSets} подходов (${unknownRoleSets} без роли)`;
     const dayRpeMax = Object.values(exs).reduce((max, e) => {
       const rk = { 'Тяжело': 3, 'Средне': 2, 'Средно': 2, 'Легко': 1 };
       return (rk[e.rpe] || 0) > (rk[max] || 0) ? e.rpe : max;
@@ -1242,7 +1335,7 @@ function renderDiary(days) {
     const dayName = pd ? dayNames[pd.getDay()] : '';
     const exHtml = Object.entries(exs).map(([ex, exData]) => {
       const { sets, rpe } = exData;
-      const exTonnage = sets.reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
+      const exTonnage = sets.filter(isVolumeCountedSet).reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
       const maxE1rm = sets.filter(w => w.weight > 0).reduce((m, w) => Math.max(m, epley(w.weight, w.reps)), 0);
       const isRecord = maxE1rm > 0 && allRecords[ex] && Math.abs(maxE1rm - allRecords[ex]) < 0.1;
       
@@ -1323,61 +1416,7 @@ function renderDiary(days) {
 }
 
 function askChangeSetRPE(id, event) {
-  if (event) event.stopPropagation();
-  const set = DB.workouts.find(w => String(w.id) === String(id));
-  if (!set) return;
-  const norm = normalizeSetEffort(set);
-  
-  let nextBand = 'easy';
-  if (norm.effort_band === 'easy') nextBand = 'moderate';
-  else if (norm.effort_band === 'moderate') nextBand = 'hard';
-  else nextBand = 'easy';
-
-  const bCur = EFFORT_BANDS[norm.effort_band];
-  const bNext = EFFORT_BANDS[nextBand];
-  const curDesc = norm.effort_source === 'exact_rir' ? `RIR ${norm.rir} (${bCur ? bCur.label : ''})` : (bCur ? bCur.label : 'Не указано');
-  const nextDesc = `${bNext.label} [диапазон ${bNext.range}]`;
-
-  const question = `Изменить оценку подхода #${set.set_num || ''} (${set.exercise || ''}) с «${curDesc}» на «${nextDesc}»?`;
-
-  if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.showConfirm === 'function') {
-    window.Telegram.WebApp.showConfirm(question, (confirmed) => {
-      if (confirmed) applySetEffortChange(set, nextBand);
-    });
-  } else {
-    if (confirm(question)) {
-      applySetEffortChange(set, nextBand);
-    }
-  }
-}
-
-function applySetEffortChange(set, nextBand) {
-  const bInfo = EFFORT_BANDS[nextBand];
-  set.effort_version = 2;
-  set.effort_band = nextBand;
-  set.effort_source = 'reported_band';
-  set.rir = null; // Do NOT invent exact RIR!
-  set.diff = bInfo.label;
-  set.rpe = bInfo.label;
-
-  const idx = (DB.workouts || []).findIndex(w => String(w.id) === String(set.id));
-  if (idx !== -1) {
-    DB.workouts[idx].effort_version = 2;
-    DB.workouts[idx].effort_band = nextBand;
-    DB.workouts[idx].effort_source = 'reported_band';
-    DB.workouts[idx].rir = null;
-    DB.workouts[idx].diff = bInfo.label;
-    DB.workouts[idx].rpe = bInfo.label;
-  }
-  localStorage.setItem('gym_db', JSON.stringify(DB));
-  renderDiary(diaryDays);
-  showToast(`✅ Диапазон сохранён: ${bInfo.label} (${bInfo.range})`);
-  saveData(); // Фон
-}
-
-function applySetRPEChange(set, next) {
-  const bandKey = next === 'Легко' ? 'easy' : next === 'Средне' ? 'moderate' : 'hard';
-  applySetEffortChange(set, bandKey);
+  openEffortEditModal('history', id, event);
 }
 
 async function deleteHistorySet(id, event) {
@@ -1431,7 +1470,8 @@ function renderVolumeChart() {
   if (!window.Chart) return;
   const ws = DB.workouts || [];
   const byWeek = {};
-  ws.forEach(w => { const d = parseDate(w.date); if (!d) return; const wk = `${d.getFullYear()}-W${Math.ceil(d.getDate() / 7) + d.getMonth() * 4}`; byWeek[wk] = (byWeek[wk] || 0) + (w.weight || 0) * (w.reps || 0); });
+  let unknownRoleVolumeSets = 0;
+  ws.forEach(w => { const d = parseDate(w.date); if (!d || !isVolumeCountedSet(w)) return; const wk = `${d.getFullYear()}-W${Math.ceil(d.getDate() / 7) + d.getMonth() * 4}`; byWeek[wk] = (byWeek[wk] || 0) + (w.weight || 0) * (w.reps || 0); if (getVolumeRole(w) === 'unknown') unknownRoleVolumeSets++; });
   const weeks = Object.keys(byWeek).sort().slice(-8);
   if (!weeks.length) return;
   const ctx = $('chart-volume').getContext('2d');
@@ -1439,18 +1479,19 @@ function renderVolumeChart() {
   window._chartVol = new Chart(ctx, {
     type: 'bar',
     data: { labels: weeks.map((_, i) => `Нед ${i + 1}`), datasets: [{ data: weeks.map(w => byWeek[w]), backgroundColor: 'rgba(0,229,200,0.7)', borderRadius: 6 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#9090b0', font: { size: 10 } }, grid: { display: false } }, y: { ticks: { color: '#9090b0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+    options: { plugins: { legend: { display: false }, title: { display: true, text: `Разминка исключена; без роли включено в истории: ${unknownRoleVolumeSets}`, color: '#9090b0', font: { size: 10 } } }, scales: { x: { ticks: { color: '#9090b0', font: { size: 10 } }, grid: { display: false } }, y: { ticks: { color: '#9090b0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
   });
 }
 
 function renderVolumeBreakdown() {
   const ws = DB.workouts || [];
   const vol = {};
-  ws.forEach(w => { vol[w.exercise] = (vol[w.exercise] || 0) + (w.weight || 0) * (w.reps || 0); });
+  ws.forEach(w => { if (!isVolumeCountedSet(w)) return; vol[w.exercise] = (vol[w.exercise] || 0) + (w.weight || 0) * (w.reps || 0); });
   const sorted = Object.entries(vol).sort((a, b) => b[1] - a[1]);
   const max = (sorted[0] && sorted[0][1]) || 1;
   const div = $('volume-breakdown');
-  div.innerHTML = sorted.slice(0, 6).map(([ex, v]) => `<div class="breakdown-item"><span class="breakdown-label">${ex}</span><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${v / max * 100}%"></div></div><span class="breakdown-val">${Math.round(v / 1000)}т</span></div>`).join('');
+  const unknownRoleSets = ws.filter(w => isVolumeCountedSet(w) && getVolumeRole(w) === 'unknown').length;
+  div.innerHTML = `<small class="text-muted">Разминка исключена; подходы без роли включены в общий тоннаж: ${unknownRoleSets}</small>` + sorted.slice(0, 6).map(([ex, v]) => `<div class="breakdown-item"><span class="breakdown-label">${ex}</span><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${v / max * 100}%"></div></div><span class="breakdown-val">${Math.round(v / 1000)}т</span></div>`).join('');
 }
 
 function renderPlateauList() {
@@ -1476,14 +1517,14 @@ function renderVolumeTrend() {
   const now = new Date();
   const w1Start = new Date(now - 7 * 86400000);
   const w2Start = new Date(now - 14 * 86400000);
-  let tThis = 0, tPrev = 0, sThis = 0, sPrev = 0;
+  let tThis = 0, tPrev = 0, sThis = 0, sPrev = 0, unknownThis = 0, unknownPrev = 0;
   ws.forEach(w => {
     const d = parseDate(w.date);
     if (!d) return;
-    if (w.set_role === 'warmup') return; // Не считаем разминку рабочим объёмом
+    if (!isVolumeCountedSet(w)) return; // Разминка исключена; неизвестная роль включена
     const t = (w.weight || 0) * (w.reps || 0);
-    if (d >= w1Start) { tThis += t; sThis++; }
-    else if (d >= w2Start) { tPrev += t; sPrev++; }
+    if (d >= w1Start) { tThis += t; sThis++; if (getVolumeRole(w) === 'unknown') unknownThis++; }
+    else if (d >= w2Start) { tPrev += t; sPrev++; if (getVolumeRole(w) === 'unknown') unknownPrev++; }
   });
   const div = $('volume-trend');
   if (!div) return;
@@ -1492,8 +1533,8 @@ function renderVolumeTrend() {
   const arrow = trendPct === null ? '—' : trendPct > 0 ? `📈 +${trendPct}%` : `📉 ${trendPct}%`;
   const cls = trendPct === null ? '' : trendPct > 0 ? 'color:#00e5c8' : 'color:#ff6b6b';
   div.innerHTML = `
-    <div class="hist-row"><span>📊 Эта неделя</span><span class="hist-val">${Math.round(tThis / 1000 * 10) / 10} т (${sThis} подх)</span></div>
-    <div class="hist-row"><span>📅 Прошлая неделя</span><span class="hist-val">${Math.round(tPrev / 1000 * 10) / 10} т (${sPrev} подх)</span></div>
+    <div class="hist-row"><span>📊 Эта неделя</span><span class="hist-val">${Math.round(tThis / 1000 * 10) / 10} т (${sThis} подх; без роли ${unknownThis})</span></div>
+    <div class="hist-row"><span>📅 Прошлая неделя</span><span class="hist-val">${Math.round(tPrev / 1000 * 10) / 10} т (${sPrev} подх; без роли ${unknownPrev})</span></div>
     <div class="hist-row"><span>📈 Тренд</span><span class="hist-val" style="${cls}">${arrow}</span></div>`;
 }
 
@@ -1588,9 +1629,11 @@ function renderProfile() {
     $('p-tdee').textContent = '—';
   }
   const days = [...new Set(ws.map(w => w.date))].length;
-  const tonnage = ws.reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
+  const countedVolumeSets = ws.filter(isVolumeCountedSet);
+  const tonnage = countedVolumeSets.reduce((s, w) => s + (w.weight || 0) * (w.reps || 0), 0);
   const sets = ws.length;
-  $('history-summary').innerHTML = `<div class="hist-row"><span>🗓 Тренировочных дней</span><span class="hist-val">${days}</span></div><div class="hist-row"><span>🔢 Всего подходов</span><span class="hist-val">${sets}</span></div><div class="hist-row"><span>🏗 Общий тоннаж</span><span class="hist-val">${(tonnage / 1000).toFixed(1)} т</span></div>`;
+  const unknownRoleVolumeSets = countedVolumeSets.filter(w => getVolumeRole(w) === 'unknown').length;
+  $('history-summary').innerHTML = `<div class="hist-row"><span>🗓 Тренировочных дней</span><span class="hist-val">${days}</span></div><div class="hist-row"><span>🔢 Всего записей</span><span class="hist-val">${sets}</span></div><div class="hist-row"><span>🏗 Тоннаж без разминки</span><span class="hist-val">${(tonnage / 1000).toFixed(1)} т</span></div><small class="text-muted">Включены подходы без роли: ${unknownRoleVolumeSets}</small>`;
   const records = {};
   ws.filter(w => w.weight > 0).forEach(w => { const e = epley(w.weight, w.reps); if (!records[w.exercise] || e > records[w.exercise]) records[w.exercise] = e; });
   const stds = [['Жим лёжа', [0.75, 1.25, 1.5]], ['Присед', [1.0, 1.5, 2.0]], ['Становая тяга', [1.25, 1.75, 2.5]]];
@@ -3172,7 +3215,7 @@ function renderAiChatHistory() {
         👋 <strong>Привет! Я твой персональный научный ИИ-тренер</strong> (Google Gemini + доказательная база PubMed).<br/><br/>
         📊 <strong>Я знаю все твои тренировочные данные:</strong><br/>
         • 🏋️ <strong>1ПМ Рекорды:</strong> Жим <strong>${b} кг</strong> · Присед <strong>${s} кг</strong> · Тяга <strong>${d} кг</strong><br/>
-        • 📈 <strong>История дневника:</strong> все <strong>${count} подходов</strong> с оценками RPE (🟢/🟡/🔴) учтены.<br/>
+        • 📈 <strong>История дневника:</strong> все <strong>${count} подходов</strong> с оценкой усилия и запасом повторов учтены.<br/>
         • 🧬 <strong>Программа:</strong> ${DB.program ? DB.program.split_name : 'Научный сплит'}.<br/><br/>
         Задай любой вопрос по восстановлению, тренировкам, выходу из плато или питанию!
       </div>
@@ -3229,14 +3272,12 @@ function buildComprehensiveAthleteContext() {
     todaySets.forEach(s => {
       const ex = s.exercise || 'Упражнение';
       if (!todayGroups[ex]) todayGroups[ex] = [];
-      const effort = s.rpe || s.diff || 'оценка усилия не записана';
-      const effortLabel = effort === 'Тяжело' ? '🔴 Тяжело' : (effort === 'Средне' || effort === 'Средно') ? '🟡 Средне' : effort === 'Легко' ? '🟢 Легко' : effort;
-      todayGroups[ex].push(`${s.weight > 0 ? s.weight + 'кг' : 'BW'}×${s.reps} (${effortLabel})`);
+      todayGroups[ex].push(`${s.weight > 0 ? s.weight + 'кг' : 'BW'}×${s.reps} (${formatEffortForAI(s)})`);
     });
     todaySummary = Object.entries(todayGroups).map(([ex, slist]) => `* ${ex}: ${slist.join(', ')}`).join('\n');
   }
 
-  // Recent 10 workouts with per-set RPE
+  // Recent 10 training dates with per-set role, exact RIR or verbal band, and failed attempts
   const byDate = {};
   ws.forEach(w => {
     if (!w || !w.date) return;
@@ -3252,9 +3293,7 @@ function buildComprehensiveAthleteContext() {
     sets.forEach(s => {
       const ex = s.exercise || 'Упражнение';
       if (!exGroups[ex]) exGroups[ex] = [];
-      const effort = s.rpe || s.diff || 'оценка усилия не записана';
-      const effortLabel = effort === 'Тяжело' ? '🔴 Тяжело' : (effort === 'Средне' || effort === 'Средно') ? '🟡 Средне' : effort === 'Легко' ? '🟢 Легко' : effort;
-      exGroups[ex].push(`${s.weight > 0 ? s.weight + 'кг' : 'BW'}×${s.reps} (${effortLabel})`);
+      exGroups[ex].push(`${s.weight > 0 ? s.weight + 'кг' : 'BW'}×${s.reps} (${formatEffortForAI(s)})`);
     });
     recentWorkoutsSummary += `\n- Дата ${d}:\n` + Object.entries(exGroups).map(([ex, slist]) => `   * ${ex}: ${slist.join(', ')}`).join('\n');
   });
@@ -3323,7 +3362,7 @@ ${recentWorkoutsSummary || 'Недавних записей о трениров�
 0. Старые ответы ИИ и сохранённые сгенерированные планы — архив, а не проверенный источник фактов. Используй свежие данные пользователя и текущие ограничения врача; не подтверждай прежние ответы без проверки.
 1. КОГДА АТЛЕТ СПРАШИВАЕТ «какая у меня была тренировка?», «как я потренировался?», «что я делал сегодня?»:
    - Смотри раздел «ТРЕНИРОВКА СЕГОДНЯ (${todayStr})» (если записи есть за сегодня) или последнюю дату из «ПОСЛЕДНИЕ ТРЕНИРОВКИ».
-   - Перечисли реальные упражнения, веса и повторы; укажи категорию тяжести только если она записана и не преобразуй её в числовой RPE/RIR.
+    - Перечисли реальные упражнения, веса и повторы; учитывай роль подхода, точный RIR только если он записан числом, словесный диапазон отдельно от точного RIR, а отмеченный срыв/неудачную попытку отдельно. Не выводи точный RIR из словесной категории и не преобразуй её в числовой RPE/RIR.
    - Сначала опиши только реальные записи дневника; сравнивай с шаблоном только если спортсмен подтвердил, что он актуален. Не подставляй отсутствующие веса, повторы и оценки усилия.
 2. Обращайся уважительно, сообщай неопределённость и не выдумывай данные. Не выдавай диагнозы или медицинские назначения.
 3. Не превращай средние результаты исследований в точные индивидуальные нормы; указывай проверяемые источники только при уверенности в их соответствии тезису.

@@ -705,6 +705,92 @@ svg defs { display: block; }
   flex-direction: column;
   gap: 12px;
 }
+.effort-edit-card {
+  max-width: 460px;
+}
+.effort-edit-context {
+  margin-top: 4px;
+  color: var(--text2);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.effort-edit-close {
+  border: 0;
+  background: transparent;
+  color: var(--text2);
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.effort-edit-section-title {
+  margin-top: 4px;
+  color: var(--text2);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.effort-edit-grid {
+  display: grid;
+  gap: 7px;
+}
+.effort-edit-grid.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.effort-edit-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.effort-edit-choice,
+.effort-edit-clear {
+  min-height: 42px;
+  padding: 7px 5px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.effort-edit-choice small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text2);
+  font-size: 0.67rem;
+  font-weight: 600;
+}
+.effort-edit-choice.easy { border-color: rgba(16,185,129,0.4); }
+.effort-edit-choice.moderate { border-color: rgba(234,179,8,0.4); }
+.effort-edit-choice.hard { border-color: rgba(239,68,68,0.4); }
+.effort-edit-choice:active,
+.effort-edit-clear:active { transform: scale(0.98); }
+.effort-edit-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.effort-edit-failed {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.effort-edit-failed input {
+  width: 17px;
+  height: 17px;
+  accent-color: #ef4444;
+}
+.effort-edit-clear {
+  min-height: 36px;
+  padding: 6px 10px;
+  color: var(--text2);
+  font-size: 0.72rem;
+}
+.effort-edit-note {
+  margin: 0;
+  color: var(--text2);
+  font-size: 0.69rem;
+  line-height: 1.4;
+}
 .input-group {
   display: flex;
   flex-direction: column;
